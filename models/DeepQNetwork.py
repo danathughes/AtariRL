@@ -33,9 +33,12 @@ class DeepQNetwork(object):
       """
 
       # Input and target placeholders
+      self.frame_shape = tuple(frame_shape)
+      self.num_actions = num_actions
+
       self.input = tf.placeholder(tf.float32, shape=(None,) + tuple(frame_shape))
       self.target = tf.placeholder(tf.float32, shape=(None, num_actions))
-      self.weights = tf.placeholder(tf.float32, shape=(None, num_actions))
+      self.mask = tf.placeholder(tf.float32, shape=(None, num_actions))
 
       self._weight_decay = kwargs.get('weight_decay', 0.0)
 
@@ -49,9 +52,24 @@ class DeepQNetwork(object):
       self.output = current_layer
 
       # Set the objective to the L2-norm of the residual
-      self.loss = l2_loss(self.output - self.target)
-      self._weight_cost = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables()])
+      self.loss = tf.nn.l2_loss(self.output - self.target)
       self._objective = self.loss
+
+
+   def get_Qs(self, states, sess):
+      """
+      Do a forward pass with the provided states
+      """
+
+      _input = np.reshape(states, (1,) + self.frame_shape)
+      _target = np.zeros((1,self.num_actions))
+      _mask = np.zeros((1,self.num_actions))
+
+      fd = {self.input: _input, self.target: _target, self.mask: _mask}
+
+      Qs = sess.run(self.output, feed_dict=fd)
+
+      return Qs.reshape((self.num_actions,))
 
 
    def objective(self):
@@ -67,7 +85,7 @@ class DeepQNetwork(object):
       Create a feed dictionary for this model
       """
 
-      return {self.input: data['input'], self.target: data['target'], self.weights: data['weight']}
+      return {self.input: data['input'], self.target: data['target'], self.mask: data['mask']}
 
 
    def train(self, train_step, data):

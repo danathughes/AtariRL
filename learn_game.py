@@ -10,6 +10,8 @@ from pygame.locals import *
 import numpy as np
 import os
 
+from models.DeepQNetwork import *
+
 
 class RandomController:
 	"""
@@ -62,123 +64,123 @@ class HumanController:
 		return action
 
 
-def calculate_Q(path, discount):
-	"""
-	Load all rewards and calculate the value for Q
-	"""
-
-	filenames = os.listdir(path)
-
-	# Get the start and end indices of each file
-	# NOTE:  We assume that the filename is like: *****_<begin>_<end>.npy
-
-	indices = []
-	for name in filenames:
-		idx = name[:-4].split('_')[-2:]
-		idx = (name,) + tuple([int(x) for x in idx])
-		indices.append(idx)
-
-	# Figure out how big to make the numpy array, and make an array for the Q values
-	max_idx = max([x[2] for x in indices])
-
-	rewards = np.zeros((max_idx,))
-	Qs = np.zeros((max_idx,))
-
-	# Load the rewards into the rewards array
-	for start, end, filename in indices:
-		reward_file = open(path + filename)
-		rewards[start:end] = np.load(reward_file)
-
-	# Calculate the Q values
-
-
-class DatasetRecorder:
+class EpsilonController:
 	"""
 	"""
 
-	def __init__(self, memory_size=100000, storage_path="./dataset/", file_prefix=""):
+	def __init__(self, base_controller, num_actions, initial_exploration=1.0, final_exploration=0.1, final_frame=1000000):
 		"""
-		Create a recorder to record the dataset
 		"""
 
-		# Buffers to store the data
-		self.states = np.zeros((memory_size, 84, 84, 4))
-		self.actions = np.zeros((memory_size,))
-		self.rewards = np.zeros((memory_size,))
+		self.epsilon = initial_exploration
+		self.eps_init = initial_exploration
+		self.eps_final = final_exploration
 
-		self.memory_size = memory_size
+		self.current_frame = 0
+		self.final_frame = final_frame
 
-		# Current frame and batch
+		self.base_controller = base_controller
+		self.num_actions = num_actions
+
+
+	def act(self, state):
+		"""
+		"""
+
+		action = self.base_controller.act(state)
+
+		self.current_frame += 1
+
+		if self.current_frame < self.final_frame:
+			self.epsilon = self.eps_init + (self.eps_final - self.eps_init)*(float(self.current_frame)/self.final_frame)
+			if self.current_frame % 1000 == 0:
+				print "Epsilon =", self.epsilon
+		else:
+			self.epsilon = self.eps_final
+
+		if np.random.random() < self.epsilon:
+			action = np.random.randint(self.num_actions)
+
+		return action
+
+
+
+class DQNController:
+	"""
+	"""
+
+	def __init__(self, input_shape, hidden_layers, num_actions, replay_memory, **kwargs):
+		"""
+		action_update_rate - number of frames to repeat an action
+		"""
+
+		# Need to query the replay memory for training examples
+		self.replay_memory = replay_memory
+		self.replay_start_size = kwargs.get('replay_start_size', 5000)
+
+		# Discount factor, learning rate, momentum, etc.
+		self.learning_rate = kwargs.get('learning_rate', 0.00025)
+		self.momentum = kwargs.get('momentum', 0.95)
+		self.squared_momentum = kwargs.get('squared_momentum', 0.95)
+		self.min_squared_gradient = kwargs.get('min_squared_gradient', 0.01)
+		self.discount_factor = kwargs.get('discount_factor', 0.99)
+		self.minibatch_size = kwargs.get('minibatch_size', 32)
+
+		# Count the actions to determine action repeats and update frequencies
+		self.action_repeat = kwargs.get('action_repeat', 4)
+		self.update_frequency = kwargs.get('update_frequency', 4)
+		self.action_count = 0
+		self.current_action = 0
+
+		# Keep track of frames to know when to train, switch networks, etc.
 		self.frame_number = 0
-		self.batch_number = 0
 
-		# Where to store this stuff
-		self.path = storage_path
-		self.prefix = file_prefix
+		# Maximum number of no-op that can be performed at the start of an episode
+		self.noop_max = kwargs.get('noop_max', 30)
+		self.noop_count = 0
+		self.no_noop = False
+
+		# Initialize a Tensorflow session and create two DQNs
+		self.sess = tf.InteractiveSession()
+		self.current_DQN = DeepQNetwork(input_shape, hidden_layers, num_actions)
+		self.target_DQN = DeepQNetwork(input_shape, hidden_layers, num_actions)
+		self.trainer = tf.train.RMSPropOptimizer(self.learning_rate, momentum=self.momentum)
+		self.current_train_step = self.trainer.minimize(self.current_DQN.objective())
+		self.target_train_step = self.trainer.minimize(self.target_DQN.objective())
+		self.sess.run(tf.initialize_all_variables())
+
+		# Maintain a history of the previous states
+		self.state_history = np.zeros((84,84,4))
 
 
-	def record(self, frame, action, reward):
+	def act(self, state):
 		"""
-		Store this state, action and reward.  Flush and start a new batch if necessary
+		Update the state history and select an action
 		"""
 
-		self.states[self.frame_number,:,:,0] = frame
-		if self.frame_number > 0:
-			self.states[self.frame_number-1,:,:,1] = frame
-		if self.frame_number > 1:
-			self.states[self.frame_number-2,:,:,2] = frame
-		if self.frame_number > 2:
-			self.states[self.frame_number-3,:,:,3] = frame
+		self.state_history[:,:,1:4] = self.state_history[:,:,0:3]
+		self.state_history[:,:,0] = state
 
-		self.actions[self.frame_number] = action
-		self.rewards[self.frame_number] = reward
+		# Time to generate a new action?
+		if self.frame_number % self.action_repeat == 0:
+			Qs = self.current_DQN.get_Qs(self.state_history, self.sess)
+			self.current_action = np.argmax(Qs)
+			self.action_count += 1
 
 		self.frame_number += 1
 
-		# Has the current buffer been filled?
-		if self.frame_number == self.memory_size:
-			# Flush out the current buffer to a file and restart, writing the last 3 frames to the appropriate spots
-			self.flush()
-			self.frame_number = 0
-			self.batch_number += 1
+		# Should the neural net be trained?
+		if self.action_count % self.update_frequency == 0 and self.frame_number >= self.replay_start_size:
+			self.train()
 
-			self.states[0,:,:,1:3] = self.states[-1,:,:,0:2]
-			self.states[1,:,:,2:3] = self.states[-1,:,:,0:1]
-			self.states[2,:,:,3] = self.states[-1,:,:,0]
+		return self.current_action
 
 
-	def reset(self, storage_prefix="", file_prefix=""):
+	def train(self):
 		"""
-		Reset the buffer and prefix
 		"""
 
-		self.frame_number = 0
-		self.batch_number = 0
-		self.path = storage_prefix
-		self.prefix = file_prefix
-
-
-	def flush(self):
-		"""
-		Record the current buffer into memory
-		"""
-
-		start_frame = self.batch_number*self.memory_size
-
-		filename = "%s%sstates_%d_%d.npy" % (self.path, self.prefix, start_frame, start_frame + self.frame_number)
-		outfile = open(filename, 'wb')
-		np.save(outfile, self.states[:self.frame_number,:,:,:])
-		outfile.close()
-
-		filename = "%s%sactions_%d_%d.npy" % (self.path, self.prefix, start_frame, start_frame + self.frame_number)
-		outfile = open(filename, 'wb')
-		np.save(outfile, self.actions[:self.frame_number])
-		outfile.close()
-
-		filename = "%s%srewards_%d_%d.npy" % (self.path, self.prefix, start_frame, start_frame + self.frame_number)
-		outfile = open(filename, 'wb')
-		np.save(outfile, self.rewards[:self.frame_number])
-		outfile.close()
+		print "Training..."
 
 
 class ReplayMemory:
@@ -200,6 +202,7 @@ class ReplayMemory:
 
 		# The current index of the buffer.  Assume a circular buffer
 		self._idx = 0
+		self.filled = False		# Has the buffer been filled?
 
 
 	def record(self, frame, action, reward, is_terminal):
@@ -217,6 +220,33 @@ class ReplayMemory:
 		# Reset the circular buffer 
 		if self._idx == self.memory_size:
 			self._idx = 0
+			self.filled = True
+
+
+	def get_sample(self, history_length):
+		"""
+		Return a single sample
+		"""
+
+		state = np.zeros((84,84,4))
+		next_state = np.zeros((84,84,4))
+
+		# Get an appropriate index 
+		if self.filled:
+			idx = np.random.randint(self.memory_size)
+			# Avoid indices where the next state is unavailable, or 3 prior states are not
+			while idx >= self._idx and idx < self._idx + 4:
+				idx = np.random.randint(self.memory_size)
+
+		else:
+			idx = np.random.randint(3, self._idx-2)
+
+		# Get the current and next state
+		for i in range(3):
+			state[:,:,i] = self.states[idx-i,:,:]
+
+
+
 			
 
 class AtariGameInterface:
@@ -307,6 +337,9 @@ class AtariGameInterface:
 
 
 #controller = HumanController(4)
-controller = RandomController(4)
+#controller = RandomController(4)
+
 replay_memory = ReplayMemory()
+dqn_controller = DQNController((84,84,4), DEEPMIND_LAYERS, 4, replay_memory)
+controller = EpsilonController(dqn_controller, 4)
 agi = AtariGameInterface('Breakout.bin', controller, replay_memory)

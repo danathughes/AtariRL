@@ -71,7 +71,7 @@ class Convolutional:
       # Create the weights and convolutional layer
       weight_shape = [self.kernel_shape[0], self.kernel_shape[1], num_input_channels, self.num_kernels]
       self.weights = weight_variable(weight_shape)
-      self.layer = tf.nn.conv2d(input_layer, self.weights, strides=[self.stride,self.stride,1,1], padding=self.padding)
+      self.layer = tf.nn.conv2d(input_layer, self.weights, strides=[1, self.stride, self.stride, 1], padding=self.padding)
 
       return self.layer
       
@@ -117,9 +117,9 @@ class Pool:
 
       # Create the pooling layer
       if self.pool_type == MAX_POOL:
-         self.layer = tf.nn.max_pool(input_layer, ksize=[1,self.pool_width,1,1], strides=[1,self.stride,1,1], padding=self.padding)
+         self.layer = tf.nn.max_pool(input_layer, ksize=[1,self.pool_width,self.pool_width,1], strides=[1,self.stride,1,1], padding=self.padding)
       elif self.pool_type == AVG_POOL:
-         self.layer = tf.nn.avg_pool(input_layer, ksize=[1,self.pool_width,1,1], strides=[1,self.stride,1,1], padding=self.padding)
+         self.layer = tf.nn.avg_pool(input_layer, ksize=[1,self.pool_width,self.pool_width,1], strides=[1,self.stride,1,1], padding=self.padding)
       else:
          # Invalid pooling type
          print "INVALID POOLING TYPE! ", self.pool_type
@@ -234,7 +234,7 @@ class Linear:
 
       return self.layer
       
-      
+
 class FullConnection:
    """
    A Fully Connected Layer
