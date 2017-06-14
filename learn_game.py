@@ -176,9 +176,18 @@ class DQNController:
 		return self.current_action
 
 
+	def createDataset(self, size):
+		"""
+		"""
+
+		return None,None,None
+
+
 	def train(self):
 		"""
 		"""
+
+		inputs, targets, masks = self.createDataset(self.minibatch_size)
 
 		print "Training..."
 
@@ -242,11 +251,12 @@ class ReplayMemory:
 			idx = np.random.randint(3, self._idx-2)
 
 		# Get the current and next state
-		for i in range(3):
+		for i in range(4):
 			state[:,:,i] = self.states[idx-i,:,:]
+		next_state[:,:,1:4] = state[:,:,0:3]
+		next_state[:,:,0] = self.states[idx+1,:,:]
 
-
-
+		return state, self.actions[idx], self.rewards[idx], next_state, self.terminal[idx]
 			
 
 class AtariGameInterface:
