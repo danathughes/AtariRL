@@ -116,7 +116,7 @@ class DQNController:
 
 		# Need to query the replay memory for training examples
 		self.replay_memory = replay_memory
-		self.replay_start_size = kwargs.get('replay_start_size', 5000)
+		self.replay_start_size = kwargs.get('replay_start_size', 50000)
 
 		# Discount factor, learning rate, momentum, etc.
 		self.learning_rate = kwargs.get('learning_rate', 0.00025)
