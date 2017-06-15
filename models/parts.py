@@ -10,20 +10,20 @@ MAX_POOL = "MAX"
 AVG_POOL = "AVG"
 
 
-def weight_variable(shape):
+def weight_variable(shape, name=None):
    """
    Create a weight matrix
    """
 
-   return tf.Variable(tf.truncated_normal(shape, stddev=0.1))
+   return tf.Variable(tf.truncated_normal(shape, stddev=0.1), name=name)
 
 
-def bias_variable(shape):
+def bias_variable(shape, name=None):
    """
    Create a bias variable
    """
 
-   return tf.Variable(tf.constant(0.1, shape=shape))
+   return tf.Variable(tf.constant(0.1, shape=shape), name=name)
 
 
 class Convolutional:
@@ -70,11 +70,32 @@ class Convolutional:
 
       # Create the weights and convolutional layer
       weight_shape = [self.kernel_shape[0], self.kernel_shape[1], num_input_channels, self.num_kernels]
-      self.weights = weight_variable(weight_shape)
+
+      if self.name:
+         self.weights = weight_variable(weight_shape, 'W_'+self.name)
+      else:
+         self.weights = weight_variable(weight_shape)
+
       self.layer = tf.nn.conv2d(input_layer, self.weights, strides=[1, self.stride, self.stride, 1], padding=self.padding)
 
       return self.layer
-      
+
+
+   def get_params(self, sess):
+      """
+      Extract the parameter values
+      """
+
+      return sess.run(self.weights.value())
+
+
+   def set_params(self, sess, params):
+      """
+      Set the parameter values
+      """
+
+      sess.run(self.weights.assign(params))
+
       
 class Pool:
    """
@@ -125,6 +146,22 @@ class Pool:
          print "INVALID POOLING TYPE! ", self.pool_type
 
       return self.layer
+
+
+   def get_params(self, sess):
+      """
+      Extract the parameter values
+      """
+
+      return None
+
+
+   def set_params(self, sess, params):
+      """
+      Set the parameter values
+      """
+
+      pass
       
       
 class ReLU:
@@ -155,12 +192,32 @@ class ReLU:
 
       # Create a bias
       bias_shape = [input_layer.get_shape()[-1].value]
-      self.bias = bias_variable(bias_shape)
+
+      if self.name:
+         self.bias = bias_variable(bias_shape, 'b_'+self.name)
+      else:
+         self.bias = bias_variable(bias_shape)
 
       # Create the ReLU layer
       self.layer = tf.nn.relu(input_layer + self.bias)
 
       return self.layer
+
+
+   def get_params(self, sess):
+      """
+      Extract the parameter values
+      """
+
+      return sess.run(self.bias.value())
+
+
+   def set_params(self, sess, params):
+      """
+      Set the parameter values
+      """
+
+      sess.run(self.bias.assign(params))
       
 
 class Sigmoid:
@@ -191,12 +248,32 @@ class Sigmoid:
 
       # Create a bias
       bias_shape = [input_layer.get_shape()[-1].value]
-      self.bias = bias_variable(bias_shape)
+
+      if self.name:
+         self.bias = bias_variable(bias_shape, 'b_'+self.name)
+      else:
+         self.bias = bias_variable(bias_shape)
 
       # Create the Sigmoid layer
       self.layer = tf.sigmoid(input_layer + self.bias)
 
       return self.layer
+
+
+   def get_params(self, sess):
+      """
+      Extract the parameter values
+      """
+
+      return sess.run(self.bias.value())
+
+
+   def set_params(self, sess, params):
+      """
+      Set the parameter values
+      """
+
+      sess.run(self.bias.assign(params))
 
 
 class Linear:
@@ -227,12 +304,32 @@ class Linear:
 
       # Create a bias
       bias_shape = [input_layer.get_shape()[-1].value]
-      self.bias = bias_variable(bias_shape)
+      if self.name:
+         self.bias = bias_variable(bias_shape, 'b_'+self.name)
+      else:
+         self.bias = bias_variable(bias_shape)
 
       # Create the ReLU layer
       self.layer = input_layer + self.bias
 
       return self.layer
+
+
+   def get_params(self, sess):
+      """
+      Extract the parameter values
+      """
+
+      return sess.run(self.bias.value())
+
+
+
+   def set_params(self, sess, params):
+      """
+      Set the parameter values
+      """
+
+      sess.run(self.bias.assign(params))
       
 
 class FullConnection:
@@ -267,12 +364,32 @@ class FullConnection:
 
       # Create a weight matrix
       input_size = input_layer.get_shape()[-1].value
-      self.weights = weight_variable([input_size, self.output_size])
+      if self.name:
+         self.weights = weight_variable([input_size, self.output_size], 'W_'+self.name)
+      else:
+         self.weights = weight_variable([input_size, self.output_size])
 
       # Create the ReLU layer
       self.layer = tf.matmul(input_layer, self.weights)
 
       return self.layer
+
+
+   def get_params(self, sess):
+      """
+      Extract the parameter values
+      """
+
+      return sess.run(self.weights.value())
+
+
+
+   def set_params(self, sess, params):
+      """
+      Set the parameter values
+      """
+
+      sess.run(self.weights.assign(params))
 
 
 class Flatten:
@@ -310,6 +427,22 @@ class Flatten:
       return self.layer
 
 
+   def get_params(self, sess):
+      """
+      Extract the parameter values
+      """
+
+      return None
+
+
+   def set_params(self, sess, params):
+      """
+      Set the parameter values
+      """
+
+      pass
+
+
 class Softmax:
    """
    A Softmax Layer
@@ -344,9 +477,31 @@ class Softmax:
       # Determine the size of the input
       input_size = input_layer.get_shape()[-1].value
 
-      self.weights = weight_variable([input_size, self.output_size])
-      self.bias = bias_variable([self.output_size])
+      if self.name:
+         self.weights = weight_variable([input_size, self.output_size], 'W_'+self.name)
+         self.bias = bias_variable([self.output_size], 'b_'+self.name)
+      else:
+         self.weights = weight_variable([input_size, self.output_size])
+         self.bias = bias_variable([self.output_size])
+
       self.layer = tf.nn.softmax(tf.matmul(input_layer, self.weights) + self.bias)
 
       return self.layer
+
+
+   def get_params(self, sess):
+      """
+      Extract the parameter values
+      """
+
+      return [sess.run(self.weights.value()), sess.run(self.bias.value())]
+
+
+   def set_params(self, sess, params):
+      """
+      Set the parameter values
+      """
+
+      sess.run(self.weights.assign(params[0]))
+      sess.run(self.bias.assign(params[1]))
 

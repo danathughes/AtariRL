@@ -114,9 +114,14 @@ class DQNController:
 		action_update_rate - number of frames to repeat an action
 		"""
 
+		self.num_actions = num_actions
+
+		self.dqn_layers = hidden_layers[0]
+		self.target_dqn_layers = hidden_layers[1]
+
 		# Need to query the replay memory for training examples
 		self.replay_memory = replay_memory
-		self.replay_start_size = kwargs.get('replay_start_size', 50000)
+		self.replay_start_size = kwargs.get('replay_start_size', 5000)
 
 		# Discount factor, learning rate, momentum, etc.
 		self.learning_rate = kwargs.get('learning_rate', 0.00025)
@@ -133,7 +138,9 @@ class DQNController:
 		self.current_action = 0
 
 		# Keep track of frames to know when to train, switch networks, etc.
+		self.target_update_frequency = kwargs.get('target_update_frequency', 1000)
 		self.frame_number = 0
+		self.param_updates = 0
 
 		# Maximum number of no-op that can be performed at the start of an episode
 		self.noop_max = kwargs.get('noop_max', 30)
@@ -141,12 +148,13 @@ class DQNController:
 		self.no_noop = False
 
 		# Initialize a Tensorflow session and create two DQNs
+		self.current_DQN = DeepQNetwork(input_shape, self.dqn_layers, num_actions)
+		self.target_DQN = DeepQNetwork(input_shape, self.target_dqn_layers, num_actions)
+
+		# Session and training stuff
 		self.sess = tf.InteractiveSession()
-		self.current_DQN = DeepQNetwork(input_shape, hidden_layers, num_actions)
-		self.target_DQN = DeepQNetwork(input_shape, hidden_layers, num_actions)
 		self.trainer = tf.train.RMSPropOptimizer(self.learning_rate, momentum=self.momentum)
-		self.current_train_step = self.trainer.minimize(self.current_DQN.objective())
-		self.target_train_step = self.trainer.minimize(self.target_DQN.objective())
+		self.train_step = self.trainer.minimize(self.current_DQN.objective())
 		self.sess.run(tf.initialize_all_variables())
 
 		# Maintain a history of the previous states
@@ -180,16 +188,61 @@ class DQNController:
 		"""
 		"""
 
-		return None,None,None
+		# Create and populate arrays for the input, target and mask for the DQN
+		states = np.zeros((size,84,84,4))
+		targets = np.zeros((size,self.num_actions))
+		masks = np.zeros((size,self.num_actions))
+
+		for i in range(size):
+			state, action, reward, next_state, terminal = self.replay_memory.get_sample()
+			states[i,:,:,:] = state
+
+			# Calculate the target value
+			if terminal:
+				targets[i,action] = reward
+			else:
+				Q = self.target_DQN.get_Qs(next_state, self.sess)
+				y = reward + self.discount_factor * np.max(Q)
+				# Clip the target between -1 and 1
+				y = max(y,-1.0)
+				y = min(y,1.0)
+				targets[i,action] = y
+
+			# Only want to train for this particular action
+			masks[i,action] = 1.0
+
+		return states, targets, masks
+
+
+	def update_target_network(self):
+		"""
+		"""
+
+		print "Updating Target DQN..."
+		
+		# Copy the variables from the current DQN to the target DQN
+		for i in range(len(self.dqn_layers)):
+			dqn_layer = self.dqn_layers[i]
+			target_layer = self.target_dqn_layers[i]
+
+			params = dqn_layer.get_params(self.sess)
+			target_layer.set_params(self.sess, params)
 
 
 	def train(self):
 		"""
 		"""
 
+		# Get the training data
 		inputs, targets, masks = self.createDataset(self.minibatch_size)
+		data = {'input': inputs, 'target': targets, 'mask': masks}
 
-		print "Training..."
+		# Train the network
+		self.current_DQN.train(self.train_step, data)
+		self.param_updates += 1
+
+		if self.param_updates % self.target_update_frequency == 0:
+			self.update_target_network()
 
 
 class ReplayMemory:
@@ -203,7 +256,7 @@ class ReplayMemory:
 
 		# Buffers to store the data
 		self.states = np.zeros((memory_size, 84, 84))
-		self.actions = np.zeros((memory_size,))
+		self.actions = np.zeros((memory_size,), np.uint8)
 		self.rewards = np.zeros((memory_size,))
 		self.terminal = np.zeros((memory_size,), np.bool)
 
@@ -232,7 +285,7 @@ class ReplayMemory:
 			self.filled = True
 
 
-	def get_sample(self, history_length):
+	def get_sample(self, history_length=4):
 		"""
 		Return a single sample
 		"""
@@ -246,17 +299,18 @@ class ReplayMemory:
 			# Avoid indices where the next state is unavailable, or 3 prior states are not
 			while idx >= self._idx and idx < self._idx + 4:
 				idx = np.random.randint(self.memory_size)
-
 		else:
-			idx = np.random.randint(3, self._idx-2)
+			# NOTE:  This needs to be fixed, because it can make the next stat have all zeros for the current frame, etc.
+			#        And also allows for the current state's previous frames to be zero...
+			idx = np.random.randint(self.memory_size)
 
 		# Get the current and next state
 		for i in range(4):
 			state[:,:,i] = self.states[idx-i,:,:]
 		next_state[:,:,1:4] = state[:,:,0:3]
-		next_state[:,:,0] = self.states[idx+1,:,:]
+		next_state[:,:,0] = self.states[(idx+1)%self.memory_size,:,:]
 
-		return state, self.actions[idx], self.rewards[idx], next_state, self.terminal[idx]
+		return state, self.actions[idx], self.rewards[idx], next_state, self.terminal[(idx+1)%self.memory_size]
 			
 
 class AtariGameInterface:
@@ -327,7 +381,7 @@ class AtariGameInterface:
 		return gray_screen
 
 
-	def play(self):
+	def learn(self):
 		"""
 		Allow for user to play the game
 		"""
@@ -346,6 +400,31 @@ class AtariGameInterface:
 			self.replay_memory.record(state, action_num, reward, not self.ale.game_over())
 
 
+	def play(self, epsilon=0.1):
+		"""
+		Allow for user to play the game
+		"""
+
+		total_score = 0
+
+		# Reset the game to start a new episode
+		self.ale.reset_game()
+
+		while not self.ale.game_over():
+			self.update_screen()
+
+			state = self.get_reduced_screen()
+			action_num = self.controller.base_controller.act(state)
+			if np.random.random() < epsilon:
+				action_num = np.random.randint(len(self.move_list))
+
+			action = self.move_list[action_num]
+			reward = self.ale.act(action)
+
+			total_score += reward
+
+		return total_score
+
 #controller = HumanController(4)
 #controller = RandomController(4)
 
@@ -353,3 +432,15 @@ replay_memory = ReplayMemory()
 dqn_controller = DQNController((84,84,4), DEEPMIND_LAYERS, 4, replay_memory)
 controller = EpsilonController(dqn_controller, 4)
 agi = AtariGameInterface('Breakout.bin', controller, replay_memory)
+
+if __name__ == '__main__':
+	while agi.ale.getFrameNumber() < 100000:
+		agi.play()
+		print "===Frame: ", agi.ale.getFrameNumber()
+
+	print
+	print "Done Training.  Playing..."
+
+	for i in range(10):
+		print "  Game #" + str(i), "- Score:", agi.play()
+

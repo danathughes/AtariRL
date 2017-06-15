@@ -7,7 +7,7 @@ import numpy as np
 from parts import *
 
 
-DEEPMIND_LAYERS = [Convolutional((8,8), 32, name='conv1', stride=4),
+DEEPMIND_LAYERS = ([Convolutional((8,8), 32, name='conv1', stride=4),
                    ReLU(name='relu1'),
                    Convolutional((4,4), 64, name='conv2', stride=2),
                    ReLU(name='relu2'),
@@ -18,7 +18,19 @@ DEEPMIND_LAYERS = [Convolutional((8,8), 32, name='conv1', stride=4),
                    ReLU(name='relu4'),
                    FullConnection(4, name='full2'),
                    Linear(name='linear')
-            ]
+            ],
+                  [Convolutional((8,8), 32, name='conv1_tgt', stride=4),
+                   ReLU(name='relu1_tgt'),
+                   Convolutional((4,4), 64, name='conv2_tgt', stride=2),
+                   ReLU(name='relu2_tgt'),
+                   Convolutional((3,3), 64, name='conv3_tgt', stride=1),
+                   ReLU(name='relu3_tgt'),
+                   Flatten(name='flatten_tgt'),
+                   FullConnection(512, name='full1_tgt'),
+                   ReLU(name='relu4_tgt'),
+                   FullConnection(4, name='full2_tgt'),
+                   Linear(name='linear_tgt')
+            ])            
 
 class DeepQNetwork(object):
 
@@ -52,9 +64,9 @@ class DeepQNetwork(object):
       self.output = current_layer
 
       # Set the objective to the L2-norm of the residual
-      self.loss = tf.nn.l2_loss(self.output - self.target)
-      self._objective = self.loss
-
+      residual = self.output - self.target
+      self._objective = tf.nn.l2_loss(residual*self.mask)
+      
 
    def get_Qs(self, states, sess):
       """
@@ -62,12 +74,13 @@ class DeepQNetwork(object):
       """
 
       _input = np.reshape(states, (1,) + self.frame_shape)
-      _target = np.zeros((1,self.num_actions))
-      _mask = np.zeros((1,self.num_actions))
+#      _target = np.zeros((1,self.num_actions))
+#      _mask = np.zeros((1,self.num_actions))
 
-      fd = {self.input: _input, self.target: _target, self.mask: _mask}
+#      fd = {self.input: _input, self.target: _target, self.mask: _mask}
 
-      Qs = sess.run(self.output, feed_dict=fd)
+#      Qs = sess.run(self.output, feed_dict=fd)
+      Qs = sess.run(self.output, feed_dict={self.input: _input})
 
       return Qs.reshape((self.num_actions,))
 
