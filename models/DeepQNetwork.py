@@ -50,7 +50,6 @@ class DeepQNetwork(object):
 
       self.input = tf.placeholder(tf.float32, shape=(None,) + tuple(frame_shape))
       self.target = tf.placeholder(tf.float32, shape=(None, num_actions))
-      self.mask = tf.placeholder(tf.float32, shape=(None, num_actions))
 
       self._weight_decay = kwargs.get('weight_decay', 0.0)
 
@@ -64,8 +63,10 @@ class DeepQNetwork(object):
       self.output = current_layer
 
       # Set the objective to the L2-norm of the residual
-      residual = self.output - self.target
-      self._objective = tf.nn.l2_loss(residual*self.mask)
+      self._objective = tf.reduce_sum(tf.square(self.output - self.target))
+
+      # Enable saving and loading of variables
+      self.saver = tf.train.Saver()
       
 
    def get_Qs(self, states, sess):
@@ -73,16 +74,20 @@ class DeepQNetwork(object):
       Do a forward pass with the provided states
       """
 
-      _input = np.reshape(states, (1,) + self.frame_shape)
-#      _target = np.zeros((1,self.num_actions))
-#      _mask = np.zeros((1,self.num_actions))
+      single_state = False
 
-#      fd = {self.input: _input, self.target: _target, self.mask: _mask}
+      if len(states.shape) == 3:
+        _input = np.reshape(states, (1,) + self.frame_shape)
+        single_state = True
+      else:
+        _input = states
 
-#      Qs = sess.run(self.output, feed_dict=fd)
-      Qs = sess.run(self.output, feed_dict={self.input: _input})
+      Q = sess.run(self.output, feed_dict={self.input: _input})
 
-      return Qs.reshape((self.num_actions,))
+      if single_state:
+        Q = np.reshape(Q, (self.num_actions,))
+
+      return Q
 
 
    def objective(self):
@@ -98,7 +103,7 @@ class DeepQNetwork(object):
       Create a feed dictionary for this model
       """
 
-      return {self.input: data['input'], self.target: data['target'], self.mask: data['mask']}
+      return {self.input: data['input'], self.target: data['target']}
 
 
    def train(self, train_step, data):
@@ -107,3 +112,19 @@ class DeepQNetwork(object):
       """
 
       train_step.run(feed_dict=self.get_feed_dict(data))
+
+
+   def save(self, path, sess):
+      """
+      Save the variables
+      """
+
+      # Not working...
+      self.saver.save(sess, path)
+
+
+   def restore(self, path, sess):
+      """
+      """
+
+      self.saver.restore(sess, path)

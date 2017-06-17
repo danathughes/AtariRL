@@ -15,7 +15,7 @@ def weight_variable(shape, name=None):
    Create a weight matrix
    """
 
-   return tf.Variable(tf.truncated_normal(shape, stddev=0.1), name=name)
+   return tf.Variable(tf.truncated_normal(shape, stddev=0.05), name=name)
 
 
 def bias_variable(shape, name=None):
@@ -23,7 +23,7 @@ def bias_variable(shape, name=None):
    Create a bias variable
    """
 
-   return tf.Variable(tf.constant(0.1, shape=shape), name=name)
+   return tf.Variable(tf.constant(0.01, shape=shape), name=name)
 
 
 class Convolutional:

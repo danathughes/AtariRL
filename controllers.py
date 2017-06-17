@@ -99,6 +99,13 @@ class EpsilonController:
 		return action
 
 
+	def save(self, path):
+		"""
+		"""
+
+		self.base_controller.save(path)
+
+
 
 class DQNController:
 	"""
@@ -116,13 +123,11 @@ class DQNController:
 
 		# Need to query the replay memory for training examples
 		self.replay_memory = replay_memory
-		self.replay_start_size = kwargs.get('replay_start_size', 50000)
+		self.replay_countdown = kwargs.get('replay_start_size', 50000)
 
 		# Discount factor, learning rate, momentum, etc.
 		self.learning_rate = kwargs.get('learning_rate', 0.00025)
 		self.momentum = kwargs.get('momentum', 0.95)
-		self.squared_momentum = kwargs.get('squared_momentum', 0.95)
-		self.min_squared_gradient = kwargs.get('min_squared_gradient', 0.01)
 		self.discount_factor = kwargs.get('discount_factor', 0.99)
 		self.minibatch_size = kwargs.get('minibatch_size', 32)
 
@@ -130,17 +135,15 @@ class DQNController:
 		self.action_repeat = kwargs.get('action_repeat', 4)
 		self.update_frequency = kwargs.get('update_frequency', 4)
 		self.action_count = 0
+		self.update_count = 0
 		self.current_action = 0
+
+		# Should the network train?
+		self.can_train = False
 
 		# Keep track of frames to know when to train, switch networks, etc.
 		self.target_update_frequency = kwargs.get('target_update_frequency', 10000)
-		self.frame_number = 0
 		self.param_updates = 0
-
-		# Maximum number of no-op that can be performed at the start of an episode
-		self.noop_max = kwargs.get('noop_max', 30)
-		self.noop_count = 0
-		self.no_noop = False
 
 		# Initialize a Tensorflow session and create two DQNs
 		self.current_DQN = DeepQNetwork(input_shape, self.dqn_layers, num_actions)
@@ -155,6 +158,16 @@ class DQNController:
 		# Maintain a history of the previous states
 		self.state_history = np.zeros((84,84,4))
 
+		self.update_target_network()
+
+
+	def save(self, path):
+		"""
+		Save the DQN model
+		"""
+
+		self.current_DQN.save(self.sess, path)
+
 
 	def act(self, state):
 		"""
@@ -164,17 +177,28 @@ class DQNController:
 		self.state_history[:,:,1:4] = self.state_history[:,:,0:3]
 		self.state_history[:,:,0] = state
 
-		# Time to generate a new action?
-		if self.frame_number % self.action_repeat == 0:
-			Qs = self.current_DQN.get_Qs(self.state_history, self.sess)
-			self.current_action = np.argmax(Qs)
-			self.action_count += 1
+		# Time to generate a new action?	
+		if self.action_count == 0:
+			Q = self.current_DQN.get_Qs(self.state_history, self.sess)
+			self.current_action = np.argmax(Q)
+			self.action_count = self.action_repeat + 1
+			self.update_count += 1
 
-		self.frame_number += 1
+			if self.replay_countdown % 100 == 0:
+				print "Q =", Q
+
+		self.action_count -= 1
 
 		# Should the neural net be trained?
-		if self.action_count % self.update_frequency == 0 and self.frame_number >= self.replay_start_size:
+		if self.update_count == self.update_frequency:
+			self.update_count = 0
 			self.train()
+
+		# Decrement the replay countdown and allow training if it reaches 0
+		self.replay_countdown -= 1
+		if self.replay_countdown == 0:
+			self.can_train = True
+			print "Start Training..."
 
 		return self.current_action
 
@@ -184,33 +208,23 @@ class DQNController:
 		"""
 
 		# Create and populate arrays for the input, target and mask for the DQN
-		states = np.zeros((size,84,84,4))
-		targets = np.zeros((size,self.num_actions))
-		masks = np.zeros((size,self.num_actions))
+		states, actions, rewards, next_states, terminals = self.replay_memory.get_samples(size)
 
-		for i in range(size):
-			state, action, reward, next_state, terminal = self.replay_memory.get_sample()
-			states[i,:,:,:] = state
+		targets = self.target_DQN.get_Qs(states, self.sess)
 
-			# Calculate the target value
-			if terminal:
-				targets[i,action] = reward
-			else:
-				Q = self.target_DQN.get_Qs(next_state, self.sess)
-				y = reward + self.discount_factor * np.max(Q)
-				# Clip the target between -1 and 1
-				y = max(y,-1.0)
-				y = min(y,1.0)
-				targets[i,action] = y
+		Qmax = np.max(self.target_DQN.get_Qs(next_states, self.sess), axis=1)
+		Qfuture = (1.0 - terminals.astype(np.int)) * self.discount_factor * Qmax
 
-			# Only want to train for this particular action
-			masks[i,action] = 1.0
+		idx = np.arange(size)
 
-		return states, targets, masks
+		targets[idx,actions] = rewards[idx] + Qfuture[idx]
+
+		return states, targets
 
 
 	def update_target_network(self):
 		"""
+		Copy the currently trained DQN into the target network
 		"""
 
 		print "Updating Target DQN..."
@@ -226,15 +240,19 @@ class DQNController:
 
 	def train(self):
 		"""
+		Train the network
 		"""
 
-		# Get the training data
-		inputs, targets, masks = self.createDataset(self.minibatch_size)
-		data = {'input': inputs, 'target': targets, 'mask': masks}
+		if self.can_train:
 
-		# Train the network
-		self.current_DQN.train(self.train_step, data)
-		self.param_updates += 1
+			# Get the training data
+			inputs, targets = self.createDataset(self.minibatch_size)
+			data = {'input': inputs, 'target': targets}
 
-		if self.param_updates % self.target_update_frequency == 0:
-			self.update_target_network()
+			# Train the network
+			self.current_DQN.train(self.train_step, data)
+			self.param_updates += 1
+
+			if self.param_updates == self.target_update_frequency:
+				self.param_updates = 0
+				self.update_target_network()

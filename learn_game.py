@@ -23,7 +23,7 @@ class AtariGameInterface:
 	"""
 	"""
 
-	def __init__(self, game_filename, controller, replay_memory):
+	def __init__(self, game_filename, controller, replay_memory, **kwargs):
 		"""
 		Load the game and create a display using pygame
 		"""
@@ -52,6 +52,9 @@ class AtariGameInterface:
 
 		self.evaluate = False
 
+		# Maximum number of no-op that can be performed at the start of an episode
+		self.noop_max = kwargs.get('noop_max', 30)
+		
 
 	def update_screen(self):
 		"""
@@ -85,13 +88,19 @@ class AtariGameInterface:
 		return gray_screen
 
 
-	def learn(self, evaluation_frequency=250000):
+	def learn(self):
 		"""
 		Allow for controller to learn while playing the game
 		"""
 
 		# Reset the game to start a new episode
 		self.ale.reset_game()
+
+		num_lives = self.ale.lives()	
+
+		# Wait a random number of frames before starting
+		for i in range(np.random.randint(self.noop_max)):
+			self.ale.act(0)
 
 		while not self.ale.game_over():
 			self.update_screen()
@@ -101,16 +110,18 @@ class AtariGameInterface:
 			action = self.move_list[action_num]
 			reward = self.ale.act(action)
 
-			self.replay_memory.record(state, action_num, reward, not self.ale.game_over())
+			# Cap reward to be between -1 and 1
+			reward = min(max(reward, -1.0), 1.0)
 
-			if self.ale.getFrameNumber() % evaluation_frequency == 0:
-				self.evaluate = True
+			is_terminal = self.ale.game_over() or self.ale.lives() != num_lives
+			num_lives = self.ale.lives()
 
-		if self.evaluate:
-			print "  Evaluating...",
-			score = self.eval_controller()
-			print "Average Score =", score
-			self.evaluate = False
+			self.replay_memory.record(state, action_num, reward, self.ale.game_over())
+
+		#	if self.ale.getFrameNumber() % 100000 == 0:
+		#		print "Saving model..."
+		#		path = "./checkpoints/dqn_model_frame_%d.ckpt" % self.ale.getFrameNumber()
+		#		self.controller.save(path)
 
 
 	def eval_controller(self, num_games=20):
@@ -123,8 +134,6 @@ class AtariGameInterface:
 			total_score += self.play()
 
 		return total_score / num_games
-
-
 
 
 	def play(self, epsilon=0.1):
