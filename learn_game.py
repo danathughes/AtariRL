@@ -111,8 +111,8 @@ class AtariGameInterface:
 			action = self.move_list[action_num]
 			reward = self.ale.act(action)
 
-			if self.ale.lives() < num_lives:
-				reward = -1.0
+#			if self.ale.lives() < num_lives:
+#				reward = -1.0
 
 			# Cap reward to be between -1 and 1
 			reward = min(max(reward, -1.0), 1.0)

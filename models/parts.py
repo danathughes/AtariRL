@@ -15,7 +15,7 @@ def weight_variable(shape, name=None):
    Create a weight matrix
    """
 
-   initializer = tf.random_normal_initializer(0.0, 0.0005)
+   initializer = tf.random_normal_initializer(0.0, 0.000)
    weights = tf.get_variable(name, shape, tf.float32, initializer)
 
    tf.summary.histogram(name, weights)

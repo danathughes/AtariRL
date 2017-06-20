@@ -123,7 +123,7 @@ class DQNController:
 
 		# Need to query the replay memory for training examples
 		self.replay_memory = replay_memory
-		self.replay_countdown = kwargs.get('replay_start_size', 50000)
+		self.replay_countdown = kwargs.get('replay_start_size', 5000)
 
 		# Discount factor, learning rate, momentum, etc.
 		self.learning_rate = kwargs.get('learning_rate', 0.00025)
@@ -163,7 +163,7 @@ class DQNController:
 
 		self.train_step = self.trainer.minimize(self.current_DQN.objective())
 
-		merged_summaries = tf.summary.merge_all()
+		self.merged_summaries = tf.summary.merge_all()
 		self._writer = tf.summary.FileWriter('./tensorboard/', self.sess.graph)
 
 		tf.global_variables_initializer().run()
@@ -269,3 +269,5 @@ class DQNController:
 			if self.param_updates == self.target_update_frequency:
 				self.param_updates = 0
 				self.update_target_network()
+
+#			self._writer.add_summary(summary, self.param_updates)

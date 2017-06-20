@@ -101,6 +101,13 @@ class DeepQNetwork(object):
       train_step.run(feed_dict=self.get_feed_dict(data))
 
 
+   def get_summary(self, data, sess, summary_op):
+      """
+      """
+
+      return sess.run(summary_op, self.get_feed_dict(data))
+
+
    def save(self, path, sess):
       """
       Save the variables
