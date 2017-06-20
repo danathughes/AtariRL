@@ -15,7 +15,7 @@ def weight_variable(shape, name=None):
    Create a weight matrix
    """
 
-   initializer = tf.random_normal_initializer(0.0, 0.05)
+   initializer = tf.random_normal_initializer(0.0, 0.0005)
    weights = tf.get_variable(name, shape, tf.float32, initializer)
 
    tf.summary.histogram(name, weights)
@@ -30,7 +30,7 @@ def bias_variable(shape, name=None):
    Create a bias variable
    """
 
-   initializer = tf.constant_initializer(0.01)
+   initializer = tf.constant_initializer(0.0)
    bias = tf.get_variable(name, shape, tf.float32, initializer)
 
    tf.summary.histogram(name, bias)
