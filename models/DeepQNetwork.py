@@ -5,32 +5,7 @@
 import tensorflow as tf
 import numpy as np
 from parts import *
-
-
-DEEPMIND_LAYERS = ([Convolutional((8,8), 32, name='conv1', stride=4),
-                   ReLU(name='relu1'),
-                   Convolutional((4,4), 64, name='conv2', stride=2),
-                   ReLU(name='relu2'),
-                   Convolutional((3,3), 64, name='conv3', stride=1),
-                   ReLU(name='relu3'),
-                   Flatten(name='flatten'),
-                   FullConnection(512, name='full1'),
-                   ReLU(name='relu4'),
-                   FullConnection(4, name='full2'),
-                   Linear(name='linear')
-            ],
-                  [Convolutional((8,8), 32, name='conv1_tgt', stride=4),
-                   ReLU(name='relu1_tgt'),
-                   Convolutional((4,4), 64, name='conv2_tgt', stride=2),
-                   ReLU(name='relu2_tgt'),
-                   Convolutional((3,3), 64, name='conv3_tgt', stride=1),
-                   ReLU(name='relu3_tgt'),
-                   Flatten(name='flatten_tgt'),
-                   FullConnection(512, name='full1_tgt'),
-                   ReLU(name='relu4_tgt'),
-                   FullConnection(4, name='full2_tgt'),
-                   Linear(name='linear_tgt')
-            ])            
+    
 
 class DeepQNetwork(object):
 
@@ -45,13 +20,18 @@ class DeepQNetwork(object):
       """
 
       # Input and target placeholders
+      self._trainable = kwargs.get('trainable', True)
+
       self.frame_shape = tuple(frame_shape)
       self.num_actions = num_actions
 
       self.input = tf.placeholder(tf.float32, shape=(None,) + tuple(frame_shape))
-      self.target = tf.placeholder(tf.float32, shape=(None, num_actions))
 
-      self._weight_decay = kwargs.get('weight_decay', 0.0)
+      if self._trainable:
+        self.target = tf.placeholder(tf.float32, shape=(None, num_actions))
+        self._weight_decay = kwargs.get('weight_decay', 0.0)
+
+      self._namespace = kwargs.get('namespace', None)
 
       # Build up the hidden layers for the network
       # Start by reshaping the input to work with the 2D convolutional tensors
@@ -63,10 +43,17 @@ class DeepQNetwork(object):
       self.output = current_layer
 
       # Set the objective to the L2-norm of the residual
-      self._objective = tf.reduce_sum(tf.square(self.output - self.target))
+      if self._trainable:
+        self._objective = tf.reduce_sum(tf.square(self.output - self.target), name='objective')
+        tf.summary.scalar('objective', self._objective)
+      else:
+        self._objective = None
 
       # Enable saving and loading of variables
       self.saver = tf.train.Saver()
+
+      # Activation summary histogram
+      self.activity_histogram = tf.summary.histogram(self._namespace + '_activation', self.output)
       
 
    def get_Qs(self, states, sess):
@@ -120,7 +107,7 @@ class DeepQNetwork(object):
       """
 
       # Not working...
-      self.saver.save(sess, path)
+#      self.saver.save(sess, path)
 
 
    def restore(self, path, sess):

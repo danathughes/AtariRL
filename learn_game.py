@@ -15,6 +15,7 @@ import scipy.ndimage as ndimage
 from models.DeepQNetwork import *
 
 from controllers import DQNController, EpsilonController
+from NetworkParameters import NATURE, ARXIV
 from memory import ReplayMemory
 
 
@@ -110,6 +111,9 @@ class AtariGameInterface:
 			action = self.move_list[action_num]
 			reward = self.ale.act(action)
 
+			if self.ale.lives() < num_lives:
+				reward = -1.0
+
 			# Cap reward to be between -1 and 1
 			reward = min(max(reward, -1.0), 1.0)
 
@@ -118,10 +122,10 @@ class AtariGameInterface:
 
 			self.replay_memory.record(state, action_num, reward, self.ale.game_over())
 
-		#	if self.ale.getFrameNumber() % 100000 == 0:
-		#		print "Saving model..."
-		#		path = "./checkpoints/dqn_model_frame_%d.ckpt" % self.ale.getFrameNumber()
-		#		self.controller.save(path)
+			if self.ale.getFrameNumber() % 100000 == 0:
+				print "Saving model..."
+				path = "./checkpoints/dqn_model_frame_%d.ckpt" % self.ale.getFrameNumber()
+				self.controller.save(path)
 
 
 	def eval_controller(self, num_games=20):
@@ -165,11 +169,12 @@ class AtariGameInterface:
 #controller = RandomController(4)
 
 replay_memory = ReplayMemory()
-dqn_controller = DQNController((84,84,4), DEEPMIND_LAYERS, 4, replay_memory)
+dqn_controller = DQNController((84,84,4), NATURE, 4, replay_memory)
 controller = EpsilonController(dqn_controller, 4)
 agi = AtariGameInterface('Breakout.bin', controller, replay_memory)
 
-if __name__ == '__main__':
+
+def run():
 	while agi.ale.getFrameNumber() < 50000000:
 		agi.learn()
 		print "===Frame: ", agi.ale.getFrameNumber()
@@ -179,4 +184,7 @@ if __name__ == '__main__':
 
 	for i in range(25):
 		print "  Game #" + str(i), "- Score:", agi.play()
+
+if __name__ == '__main__':
+	run()
 

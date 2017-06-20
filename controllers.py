@@ -131,6 +131,9 @@ class DQNController:
 		self.discount_factor = kwargs.get('discount_factor', 0.99)
 		self.minibatch_size = kwargs.get('minibatch_size', 32)
 
+		self.epsilon = kwargs.get('epsilon', 1e-10)
+		self.decay = kwargs.get('decay', 0.01)
+
 		# Count the actions to determine action repeats and update frequencies
 		self.action_repeat = kwargs.get('action_repeat', 4)
 		self.update_frequency = kwargs.get('update_frequency', 4)
@@ -146,14 +149,24 @@ class DQNController:
 		self.param_updates = 0
 
 		# Initialize a Tensorflow session and create two DQNs
-		self.current_DQN = DeepQNetwork(input_shape, self.dqn_layers, num_actions)
-		self.target_DQN = DeepQNetwork(input_shape, self.target_dqn_layers, num_actions)
+		with tf.name_scope('dqn'):
+			self.current_DQN = DeepQNetwork(input_shape, self.dqn_layers, num_actions, namespace='dqn')
+		with tf.name_scope('target_dqn'):
+			self.target_DQN = DeepQNetwork(input_shape, self.target_dqn_layers, num_actions, namespace='target_dqn', trainable=False)
+		
+
 
 		# Session and training stuff
 		self.sess = tf.InteractiveSession()
-		self.trainer = tf.train.RMSPropOptimizer(self.learning_rate, momentum=self.momentum)
+#		self.trainer = tf.train.RMSPropOptimizer(self.learning_rate, decay=self.decay, momentum=self.momentum, epsilon=self.epsilon)
+		self.trainer = tf.train.AdamOptimizer(self.learning_rate)
+
 		self.train_step = self.trainer.minimize(self.current_DQN.objective())
-		self.sess.run(tf.initialize_all_variables())
+
+		merged_summaries = tf.summary.merge_all()
+		self._writer = tf.summary.FileWriter('./tensorboard/', self.sess.graph)
+
+		tf.global_variables_initializer().run()
 
 		# Maintain a history of the previous states
 		self.state_history = np.zeros((84,84,4))
@@ -184,7 +197,7 @@ class DQNController:
 			self.action_count = self.action_repeat + 1
 			self.update_count += 1
 
-			if self.replay_countdown % 100 == 0:
+			if self.replay_countdown % 1000 == 0:
 				print "Q =", Q
 
 		self.action_count -= 1
