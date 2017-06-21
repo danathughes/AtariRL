@@ -98,7 +98,7 @@ class DeepQNetwork(object):
       Train on the input data (x) and the target (y).  The train step is some optimizer
       """
 
-      sess.run(train_step, feed_dict=self.get_feed_dict(data))
+      train_step.run(feed_dict=self.get_feed_dict(data))
 
 
    def get_summary(self, data, sess, summary_op):
