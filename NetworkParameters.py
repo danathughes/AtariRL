@@ -9,8 +9,8 @@ NATURE = ([Convolutional((8,8), 32, name='conv1', stride=4),
            Flatten(name='flatten'),
            FullConnection(512, name='full1'),
            ReLU(name='relu4'),
-           FullConnection(4, name='full2'),
-           Linear(name='linear')
+           FullConnection(4, name='full2')
+#           Linear(name='linear')
           ],
           [Convolutional((8,8), 32, name='conv1_tgt', stride=4),
            ReLU(name='relu1_tgt'),
@@ -21,8 +21,8 @@ NATURE = ([Convolutional((8,8), 32, name='conv1', stride=4),
            Flatten(name='flatten_tgt'),
            FullConnection(512, name='full1_tgt'),
            ReLU(name='relu4_tgt'),
-           FullConnection(4, name='full2_tgt'),
-           Linear(name='linear_tgt')
+           FullConnection(4, name='full2_tgt')
+#           Linear(name='linear_tgt')
           ])
 
 ARXIV  = ([Convolutional((8,8), 16, name='conv1', stride=4),
@@ -32,8 +32,8 @@ ARXIV  = ([Convolutional((8,8), 16, name='conv1', stride=4),
            Flatten(name='flatten'),
            FullConnection(256, name='full1'),
            ReLU(name='relu4'),
-           FullConnection(4, name='full2'),
-           Linear(name='linear')
+           FullConnection(4, name='full2')
+#           Linear(name='linear')
           ],
           [Convolutional((8,8), 16, name='conv1_tgt', stride=4),
            ReLU(name='relu1_tgt'),
@@ -42,6 +42,6 @@ ARXIV  = ([Convolutional((8,8), 16, name='conv1', stride=4),
            Flatten(name='flatten_tgt'),
            FullConnection(256, name='full1_tgt'),
            ReLU(name='relu4_tgt'),
-           FullConnection(4, name='full2_tgt'),
-           Linear(name='linear_tgt')
+           FullConnection(4, name='full2_tgt')
+#           Linear(name='linear_tgt')
           ])      

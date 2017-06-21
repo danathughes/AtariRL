@@ -99,11 +99,11 @@ class EpsilonController:
 		return action
 
 
-	def save(self, path):
+	def save(self, frame_number):
 		"""
 		"""
 
-		self.base_controller.save(path)
+		self.base_controller.save(frame_number)
 
 
 
@@ -123,7 +123,7 @@ class DQNController:
 
 		# Need to query the replay memory for training examples
 		self.replay_memory = replay_memory
-		self.replay_countdown = kwargs.get('replay_start_size', 5000)
+		self.replay_countdown = kwargs.get('replay_start_size', 50000)
 
 		# Discount factor, learning rate, momentum, etc.
 		self.learning_rate = kwargs.get('learning_rate', 0.00025)
@@ -140,6 +140,7 @@ class DQNController:
 		self.action_count = 0
 		self.update_count = 0
 		self.current_action = 0
+		self.frame_count = 0
 
 		# Should the network train?
 		self.can_train = False
@@ -158,8 +159,8 @@ class DQNController:
 
 		# Session and training stuff
 		self.sess = tf.InteractiveSession()
-#		self.trainer = tf.train.RMSPropOptimizer(self.learning_rate, decay=self.decay, momentum=self.momentum, epsilon=self.epsilon)
-		self.optimizer = tf.train.AdamOptimizer(self.learning_rate)
+		self.optimizer = tf.train.RMSPropOptimizer(self.learning_rate, decay=self.decay, momentum=self.momentum, epsilon=self.epsilon)
+#		self.optimizer = tf.train.AdamOptimizer(self.learning_rate)
 
 		# Need to clip gradients between -1 and 1 to stabilize learning
 		grads_and_vars = self.optimizer.compute_gradients(self.current_DQN.objective())
@@ -171,6 +172,10 @@ class DQNController:
 		self.merged_summaries = tf.summary.merge_all()
 		self._writer = tf.summary.FileWriter('./tensorboard/', self.sess.graph)
 
+		# Be able to save and restore checkpoints
+		self.saver = tf.train.Saver()
+		self.save_path = kwargs.get('save_path', './checkpoints/model_checkpoint')
+
 		tf.global_variables_initializer().run()
 
 		# Maintain a history of the previous states
@@ -179,12 +184,13 @@ class DQNController:
 		self.update_target_network()
 
 
-	def save(self, path):
+	def save(self, frame_number):
 		"""
 		Save the DQN model
 		"""
 
-		self.current_DQN.save(self.sess, path)
+		self.saver.save(self.sess, self.save_path, global_step=frame_number)
+
 
 
 	def act(self, state):
@@ -208,15 +214,24 @@ class DQNController:
 		self.action_count -= 1
 
 		# Should the neural net be trained?
-		if self.update_count == self.update_frequency:
+		if self.update_count >= self.update_frequency and self.can_train:
 			self.update_count = 0
 			self.train()
+
+		self.param_updates += 1
+
+		if self.param_updates >= self.target_update_frequency and self.can_train:
+			self.param_updates = 0
+			self.update_target_network()
 
 		# Decrement the replay countdown and allow training if it reaches 0
 		self.replay_countdown -= 1
 		if self.replay_countdown == 0:
 			self.can_train = True
 			print "Start Training..."
+
+		self.frame_count += 1
+
 
 		return self.current_action
 
@@ -228,8 +243,10 @@ class DQNController:
 		# Create and populate arrays for the input, target and mask for the DQN
 		states, actions, rewards, next_states, terminals = self.replay_memory.get_samples(size)
 
-		targets = self.target_DQN.get_Qs(states, self.sess)
+		# Get what the normal output would be for the DQN
+		targets = self.current_DQN.get_Qs(states, self.sess)
 
+		# Update the Q value of only the action
 		Qmax = np.max(self.target_DQN.get_Qs(next_states, self.sess), axis=1)
 		Qfuture = (1.0 - terminals.astype(np.int)) * self.discount_factor * Qmax
 
@@ -260,19 +277,21 @@ class DQNController:
 		"""
 		Train the network
 		"""
+		
+		# Get the training data
+		inputs, targets = self.createDataset(self.minibatch_size)
+		data = {'input': inputs, 'target': targets}
 
-		if self.can_train:
+		# Train the network
+		self.current_DQN.train(self.train_step, data)
 
-			# Get the training data
-			inputs, targets = self.createDataset(self.minibatch_size)
-			data = {'input': inputs, 'target': targets}
+		# Summarize data
+		summaries = self.current_DQN.get_summary(self.merged_summaries, data)
+		self._writer.add_summary(summaries, self.frame_count)
+#			self.param_updates += 1
 
-			# Train the network
-			self.current_DQN.train(self.train_step, data)
-			self.param_updates += 1
-
-			if self.param_updates == self.target_update_frequency:
-				self.param_updates = 0
-				self.update_target_network()
+#			if self.param_updates == self.target_update_frequency:
+#				self.param_updates = 0
+#				self.update_target_network()
 
 #			self._writer.add_summary(summary, self.param_updates)

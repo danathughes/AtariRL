@@ -124,8 +124,7 @@ class AtariGameInterface:
 
 			if self.ale.getFrameNumber() % 100000 == 0:
 				print "Saving model..."
-				path = "./checkpoints/dqn_model_frame_%d.ckpt" % self.ale.getFrameNumber()
-				self.controller.save(path)
+				self.controller.save(self.ale.getFrameNumber())
 
 
 	def eval_controller(self, num_games=20):

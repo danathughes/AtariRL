@@ -53,7 +53,7 @@ class DeepQNetwork(object):
       self.saver = tf.train.Saver()
 
       # Activation summary histogram
-      self.activity_histogram = tf.summary.histogram(self._namespace + '_activation', self.output)
+      #self.activity_histogram = tf.summary.histogram(self._namespace + '_activation', self.output)
       
 
    def get_Qs(self, states, sess):
@@ -101,24 +101,8 @@ class DeepQNetwork(object):
       train_step.run(feed_dict=self.get_feed_dict(data))
 
 
-   def get_summary(self, data, sess, summary_op):
+   def get_summary(self, summary_op, data):
       """
       """
 
-      return sess.run(summary_op, self.get_feed_dict(data))
-
-
-   def save(self, path, sess):
-      """
-      Save the variables
-      """
-
-      # Not working...
-#      self.saver.save(sess, path)
-
-
-   def restore(self, path, sess):
-      """
-      """
-
-      self.saver.restore(sess, path)
+      return summary_op.eval(feed_dict=self.get_feed_dict(data))
