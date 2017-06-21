@@ -159,9 +159,14 @@ class DQNController:
 		# Session and training stuff
 		self.sess = tf.InteractiveSession()
 #		self.trainer = tf.train.RMSPropOptimizer(self.learning_rate, decay=self.decay, momentum=self.momentum, epsilon=self.epsilon)
-		self.trainer = tf.train.AdamOptimizer(self.learning_rate)
+		self.optimizer = tf.train.AdamOptimizer(self.learning_rate)
 
-		self.train_step = self.trainer.minimize(self.current_DQN.objective())
+		# Need to clip gradients between -1 and 1 to stabilize learning
+		grads_and_vars = self.optimizer.compute_gradients(self.current_DQN.objective())
+		capped_grads_and_vars = [(tf.clip_by_value(grad, -1.0, 1.0), var) if grad is not None else (None, var) for grad, var in grads_and_vars]
+		self.train_step = self.optimizer.apply_gradients(capped_grads_and_vars)
+
+#		self.train_step = self.trainer.minimize(self.current_DQN.objective())
 
 		self.merged_summaries = tf.summary.merge_all()
 		self._writer = tf.summary.FileWriter('./tensorboard/', self.sess.graph)
