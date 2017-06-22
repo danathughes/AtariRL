@@ -8,6 +8,7 @@ from models.DeepQNetwork import *
 
 
 
+
 class RandomController:
 	"""
 	"""
@@ -123,7 +124,7 @@ class DQNController:
 
 		# Need to query the replay memory for training examples
 		self.replay_memory = replay_memory
-		self.replay_countdown = kwargs.get('replay_start_size', 50000)
+		self.replay_start_size = kwargs.get('replay_start_size', 5000)
 
 		# Discount factor, learning rate, momentum, etc.
 		self.learning_rate = kwargs.get('learning_rate', 0.00025)
@@ -137,17 +138,20 @@ class DQNController:
 		# Count the actions to determine action repeats and update frequencies
 		self.action_repeat = kwargs.get('action_repeat', 4)
 		self.update_frequency = kwargs.get('update_frequency', 4)
-		self.action_count = 0
-		self.update_count = 0
-		self.current_action = 0
-		self.frame_count = 0
 
+		# How many frames has the controller seen?
+		self.frame_number = 0
+
+		# Keep a list of actions to perform, pushing new actions onto it (with repeat) as needed
+		self.action_queue = []
+		
 		# Should the network train?
 		self.can_train = False
 
 		# Keep track of frames to know when to train, switch networks, etc.
-		self.target_update_frequency = kwargs.get('target_update_frequency', 10000)
-		self.param_updates = 0
+		self.target_update_frequency = kwargs.get('target_update_frequency', 1000)
+		self.num_param_updates = 0
+
 
 		# Initialize a Tensorflow session and create two DQNs
 		with tf.name_scope('dqn'):
@@ -156,19 +160,16 @@ class DQNController:
 			self.target_DQN = DeepQNetwork(input_shape, self.target_dqn_layers, num_actions, namespace='target_dqn', trainable=False)
 		
 
-
 		# Session and training stuff
 		self.sess = tf.InteractiveSession()
 		self.optimizer = tf.train.RMSPropOptimizer(self.learning_rate, decay=self.decay, momentum=self.momentum, epsilon=self.epsilon)
-#		self.optimizer = tf.train.AdamOptimizer(self.learning_rate)
 
 		# Need to clip gradients between -1 and 1 to stabilize learning
 		grads_and_vars = self.optimizer.compute_gradients(self.current_DQN.objective())
 		capped_grads_and_vars = [(tf.clip_by_value(grad, -1.0, 1.0), var) if grad is not None else (None, var) for grad, var in grads_and_vars]
 		self.train_step = self.optimizer.apply_gradients(capped_grads_and_vars)
 
-#		self.train_step = self.trainer.minimize(self.current_DQN.objective())
-
+		# Tensorboard stuff
 		self.merged_summaries = tf.summary.merge_all()
 		self._writer = tf.summary.FileWriter('./tensorboard/', self.sess.graph)
 
@@ -178,9 +179,16 @@ class DQNController:
 
 		tf.global_variables_initializer().run()
 
+		# Should a model be loaded?
+		self.restore_path = kwargs.get('restore_path', None)
+		if self.restore_path is not None:
+			print "Restoring Model..."
+			self.saver.restore(self.sess, tf.train.latest_checkpoint(self.restore_path))
+
 		# Maintain a history of the previous states
 		self.state_history = np.zeros((84,84,4))
 
+		# Make sure that the DQN and target network are the same before beginning.
 		self.update_target_network()
 
 
@@ -202,38 +210,30 @@ class DQNController:
 		self.state_history[:,:,0] = state
 
 		# Time to generate a new action?	
-		if self.action_count == 0:
+		if self.action_queue == []:
 			Q = self.current_DQN.get_Qs(self.state_history, self.sess)
-			self.current_action = np.argmax(Q)
-			self.action_count = self.action_repeat + 1
-			self.update_count += 1
+			self.action_queue += [np.argmax(Q)] * self.action_repeat
 
-			if self.replay_countdown % 1000 == 0:
+			if self.frame_number % 1000 == 0:
 				print "Q =", Q
 
-		self.action_count -= 1
-
-		# Should the neural net be trained?
-		if self.update_count >= self.update_frequency and self.can_train:
-			self.update_count = 0
-			self.train()
-
-		self.param_updates += 1
-
-		if self.param_updates >= self.target_update_frequency and self.can_train:
-			self.param_updates = 0
-			self.update_target_network()
-
-		# Decrement the replay countdown and allow training if it reaches 0
-		self.replay_countdown -= 1
-		if self.replay_countdown == 0:
+		# Has enough frames occured to start training?
+		if self.frame_number == self.replay_start_size:
 			self.can_train = True
 			print "Start Training..."
 
-		self.frame_count += 1
+		# Should training occur?  
+		if self.frame_number % (self.update_frequency * self.action_repeat) == 0 and self.can_train:
+			self.train()
+			self.num_param_updates += 1
 
+			# Should the target network be updated?
+			if self.num_param_updates % self.target_update_frequency == 0:
+				self.update_target_network()
 
-		return self.current_action
+		self.frame_number += 1
+
+		return self.action_queue.pop()
 
 
 	def createDataset(self, size):
@@ -277,7 +277,7 @@ class DQNController:
 		"""
 		Train the network
 		"""
-		
+
 		# Get the training data
 		inputs, targets = self.createDataset(self.minibatch_size)
 		data = {'input': inputs, 'target': targets}
@@ -287,11 +287,4 @@ class DQNController:
 
 		# Summarize data
 		summaries = self.current_DQN.get_summary(self.merged_summaries, data)
-		self._writer.add_summary(summaries, self.frame_count)
-#			self.param_updates += 1
-
-#			if self.param_updates == self.target_update_frequency:
-#				self.param_updates = 0
-#				self.update_target_network()
-
-#			self._writer.add_summary(summary, self.param_updates)
+		self._writer.add_summary(summaries, self.frame_number)

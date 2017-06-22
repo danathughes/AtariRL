@@ -18,6 +18,7 @@ from controllers import DQNController, EpsilonController
 from NetworkParameters import NATURE, ARXIV
 from memory import ReplayMemory
 
+from hooks.TrainingHook import *
 
 
 class AtariGameInterface:
@@ -55,6 +56,8 @@ class AtariGameInterface:
 
 		# Maximum number of no-op that can be performed at the start of an episode
 		self.noop_max = kwargs.get('noop_max', 30)
+
+		self.frame_number = 0
 		
 
 	def update_screen(self):
@@ -111,6 +114,8 @@ class AtariGameInterface:
 			action = self.move_list[action_num]
 			reward = self.ale.act(action)
 
+			self.frame_number += 1
+
 #			if self.ale.lives() < num_lives:
 #				reward = -1.0
 
@@ -122,9 +127,9 @@ class AtariGameInterface:
 
 			self.replay_memory.record(state, action_num, reward, self.ale.game_over())
 
-			if self.ale.getFrameNumber() % 100000 == 0:
+			if self.frame_number % 100000 == 0:
 				print "Saving model..."
-				self.controller.save(self.ale.getFrameNumber())
+				self.controller.save(self.frame_number)
 
 
 	def eval_controller(self, num_games=20):
