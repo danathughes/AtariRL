@@ -18,7 +18,7 @@ from controllers import DQNController, EpsilonController
 from NetworkParameters import NATURE, ARXIV
 from memory import ReplayMemory
 
-from hooks.TrainingHook import *
+#from replay_memory import *
 
 
 class AtariGameInterface:
@@ -45,6 +45,8 @@ class AtariGameInterface:
 		# Grab the set of available moves
 		self.move_list = self.ale.getMinimalActionSet()
 
+		self.show_while_training = False
+
 		# Show the first screen
 		self.update_screen()
 		
@@ -56,8 +58,10 @@ class AtariGameInterface:
 
 		# Maximum number of no-op that can be performed at the start of an episode
 		self.noop_max = kwargs.get('noop_max', 30)
+		self.action_repeat = kwargs.get('action_repeat', 4)
 
 		self.frame_number = 0
+
 		
 
 	def update_screen(self):
@@ -67,13 +71,14 @@ class AtariGameInterface:
 
 		self.ale.getScreenRGB(self.screen_buffer)
 
-		game_screen = self.screen_buffer.reshape((210,160,3))
-		game_screen = np.transpose(game_screen, (1,0,2))
+		if self.show_while_training:
+			game_screen = self.screen_buffer.reshape((210,160,3))
+			game_screen = np.transpose(game_screen, (1,0,2))
 
-		game_surface = pygame.surfarray.make_surface(game_screen)
-		self.screen.blit(game_surface, (0,0))
+			game_surface = pygame.surfarray.make_surface(game_screen)
+			self.screen.blit(game_surface, (0,0))
 
-		pygame.display.flip()
+			pygame.display.flip()
 
 
 	def get_reduced_screen(self):
@@ -102,6 +107,8 @@ class AtariGameInterface:
 
 		num_lives = self.ale.lives()	
 
+		score = 0
+
 		# Wait a random number of frames before starting
 		for i in range(np.random.randint(self.noop_max)):
 			self.ale.act(0)
@@ -112,12 +119,15 @@ class AtariGameInterface:
 			state = self.get_reduced_screen()
 			action_num = self.controller.act(state)
 			action = self.move_list[action_num]
-			reward = self.ale.act(action)
+
+			# Run the action 4 times
+			reward = 0.0
+			for i in range(self.action_repeat):
+				reward += self.ale.act(action)
+
+			score += reward
 
 			self.frame_number += 1
-
-#			if self.ale.lives() < num_lives:
-#				reward = -1.0
 
 			# Cap reward to be between -1 and 1
 			reward = min(max(reward, -1.0), 1.0)
@@ -125,11 +135,13 @@ class AtariGameInterface:
 			is_terminal = self.ale.game_over() or self.ale.lives() != num_lives
 			num_lives = self.ale.lives()
 
-			self.replay_memory.record(state, action_num, reward, self.ale.game_over())
+			self.replay_memory.record(state, action_num, reward, is_terminal)
 
-			if self.frame_number % 100000 == 0:
+			if self.frame_number % 500000 == 0:
 				print "Saving model..."
 				self.controller.save(self.frame_number)
+
+		return score
 
 
 	def eval_controller(self, num_games=20):
@@ -151,6 +163,10 @@ class AtariGameInterface:
 
 		total_score = 0
 
+		# Ignore whether or not to update the screen
+		old_show_while_training = self.show_while_training
+		self.show_while_training = True
+
 		# Reset the game to start a new episode
 		self.ale.reset_game()
 
@@ -167,21 +183,29 @@ class AtariGameInterface:
 
 			total_score += reward
 
+		self.show_while_training = old_show_while_training
+
 		return total_score
 
-#controller = HumanController(4)
-#controller = RandomController(4)
 
-replay_memory = ReplayMemory()
+replay_memory = ReplayMemory(1000000)
+#replay_memory.load('memory')
+
 dqn_controller = DQNController((84,84,4), NATURE, 4, replay_memory)
 controller = EpsilonController(dqn_controller, 4)
 agi = AtariGameInterface('Breakout.bin', controller, replay_memory)
 
+# Restore things
 
 def run():
-	while agi.ale.getFrameNumber() < 50000000:
-		agi.learn()
-		print "===Frame: ", agi.ale.getFrameNumber()
+	cur_episode = 0
+	num_frames = 0
+	while agi.frame_number < 50000000:
+		score = agi.learn()
+		elapsed_frames = agi.frame_number - num_frames
+		num_frames = agi.frame_number
+		print "Episode %d:  Total Score = %d\t# Frames = %d\tTotal Frames = %d\tEpsilon: %f" % (cur_episode, score, elapsed_frames, num_frames, controller.epsilon)
+		cur_episode += 1
 
 	print
 	print "Done Training.  Playing..."

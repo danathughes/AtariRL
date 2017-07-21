@@ -6,7 +6,7 @@ import scipy.ndimage as ndimage
 import tensorflow as tf
 from models.DeepQNetwork import *
 
-
+from monitor import *
 
 
 class RandomController:
@@ -89,8 +89,6 @@ class EpsilonController:
 
 		if self.current_frame < self.final_frame:
 			self.epsilon = self.eps_init + (self.eps_final - self.eps_init)*(float(self.current_frame)/self.final_frame)
-			if self.current_frame % 1000 == 0:
-				print "Epsilon =", self.epsilon
 		else:
 			self.epsilon = self.eps_final
 
@@ -118,74 +116,70 @@ class DQNController:
 		"""
 
 		self.num_actions = num_actions
-
-		self.dqn_layers = hidden_layers[0]
-		self.target_dqn_layers = hidden_layers[1]
+		self.dqn_layers = hidden_layers
 
 		# Need to query the replay memory for training examples
 		self.replay_memory = replay_memory
 		self.replay_start_size = kwargs.get('replay_start_size', 5000)
 
-		# Discount factor, learning rate, momentum, etc.
-		self.learning_rate = kwargs.get('learning_rate', 0.00025)
-		self.momentum = kwargs.get('momentum', 0.95)
+		# Discount factor, etc.
 		self.discount_factor = kwargs.get('discount_factor', 0.99)
 		self.minibatch_size = kwargs.get('minibatch_size', 32)
 
-		self.epsilon = kwargs.get('epsilon', 1e-10)
-		self.decay = kwargs.get('decay', 0.01)
-
 		# Count the actions to determine action repeats and update frequencies
-		self.action_repeat = kwargs.get('action_repeat', 4)
 		self.update_frequency = kwargs.get('update_frequency', 4)
 
-		# How many frames has the controller seen?
-		self.frame_number = 0
+		# Where to store checkpoints, Tensorboard logs, etc
+		self.save_path = kwargs.get('save_path', './checkpoints/model_checkpoint')
+		self.log_dir = kwargs.get('tensorboard_log_dir', '/home/dana/Research/AtariRL/tensorboard/')
 
-		# Keep a list of actions to perform, pushing new actions onto it (with repeat) as needed
-		self.action_queue = []
+		# How many frames has the controller seen?
+		self.episode_number = 0
+		self.frame_number = 0
 		
 		# Should the network train?
 		self.can_train = False
 
 		# Keep track of frames to know when to train, switch networks, etc.
 		self.target_update_frequency = kwargs.get('target_update_frequency', 1000)
-		self.num_param_updates = 0
 
+		self.best_Q = np.zeros((self.num_actions,))
+
+		# Did the user provide a session?
+		self.sess = kwargs.get('tf_session', tf.InteractiveSession())
 
 		# Initialize a Tensorflow session and create two DQNs
-		with tf.name_scope('dqn'):
-			self.current_DQN = DeepQNetwork(input_shape, self.dqn_layers, num_actions, namespace='dqn')
-		with tf.name_scope('target_dqn'):
-			self.target_DQN = DeepQNetwork(input_shape, self.target_dqn_layers, num_actions, namespace='target_dqn', trainable=False)
-		
+		self.dqn = DeepQNetwork(input_shape, self.dqn_layers, num_actions, self.sess, network_name='dqn')
+		self.target_dqn = DeepQNetwork(input_shape, self.dqn_layers, num_actions, self.sess, network_name='target_dqn', trainable=False)
 
-		# Session and training stuff
-		self.sess = tf.InteractiveSession()
-		self.optimizer = tf.train.RMSPropOptimizer(self.learning_rate, decay=self.decay, momentum=self.momentum, epsilon=self.epsilon)
+		self.update_operation = UpdateOperation(self.dqn, self.target_dqn, self.sess)
 
-		# Need to clip gradients between -1 and 1 to stabilize learning
-		grads_and_vars = self.optimizer.compute_gradients(self.current_DQN.objective())
-		capped_grads_and_vars = [(tf.clip_by_value(grad, -1.0, 1.0), var) if grad is not None else (None, var) for grad, var in grads_and_vars]
-		self.train_step = self.optimizer.apply_gradients(capped_grads_and_vars)
+		# Create an operator to update the target weights from the current DQN
+#		self.update_operations = []
 
-		# Tensorboard stuff
-		self.merged_summaries = tf.summary.merge_all()
-		self._writer = tf.summary.FileWriter('./tensorboard/', self.sess.graph)
+#		with tf.variable_scope('update_operation'):
+#			for name in self.dqn.params:
+#				op = self.target_DQN.params[name].assign(self.dqn.params[name].value())
+#				self.update_operations.append(op)
 
-		# Be able to save and restore checkpoints
-		self.saver = tf.train.Saver()
-		self.save_path = kwargs.get('save_path', './checkpoints/model_checkpoint')
+
+		# Be able to save and restore the dqn checkpoints
+		self.saver = tf.train.Saver(var_list=self.dqn.params, max_to_keep=1)
 
 		tf.global_variables_initializer().run()
 
 		# Should a model be loaded?
-		self.restore_path = kwargs.get('restore_path', None)
+#		self.restore_path = kwargs.get('restore_path', '/home/dana/Research/AtariRL/checkpoints')
+		self.restore_path = None
 		if self.restore_path is not None:
 			print "Restoring Model..."
 			self.saver.restore(self.sess, tf.train.latest_checkpoint(self.restore_path))
 
-		# Maintain a history of the previous states
+		# Summaries
+		self.tensorboard_monitor = TensorboardMonitor(self.log_dir, self.sess)
+		self.tensorboard_monitor.add_dqn_summary(self.dqn)
+
+		# Maintain a history of the previous states for use as input
 		self.state_history = np.zeros((84,84,4))
 
 		# Make sure that the DQN and target network are the same before beginning.
@@ -198,7 +192,7 @@ class DQNController:
 		"""
 
 		self.saver.save(self.sess, self.save_path, global_step=frame_number)
-
+		self.replay_memory.save('./memory')
 
 
 	def act(self, state):
@@ -206,16 +200,16 @@ class DQNController:
 		Update the state history and select an action
 		"""
 
-		self.state_history[:,:,1:4] = self.state_history[:,:,0:3]
-		self.state_history[:,:,0] = state
+		self.state_history[:,:,0:3] = self.state_history[:,:,1:4]
+		self.state_history[:,:,3] = state
 
-		# Time to generate a new action?	
-		if self.action_queue == []:
-			Q = self.current_DQN.get_Qs(self.state_history, self.sess)
-			self.action_queue += [np.argmax(Q)] * self.action_repeat
+		# Select an action
+		Q = self.dqn.get_Qs(self.state_history)
+		action = np.argmax(Q)
 
-			if self.frame_number % 1000 == 0:
-				print "Q =", Q
+
+		for i in range(self.num_actions):
+			self.best_Q[i] = max(self.best_Q[i], Q[i])
 
 		# Has enough frames occured to start training?
 		if self.frame_number == self.replay_start_size:
@@ -223,17 +217,16 @@ class DQNController:
 			print "Start Training..."
 
 		# Should training occur?  
-		if self.frame_number % (self.update_frequency * self.action_repeat) == 0 and self.can_train:
+		if self.frame_number % self.update_frequency == 0 and self.can_train:
 			self.train()
-			self.num_param_updates += 1
 
-			# Should the target network be updated?
-			if self.num_param_updates % self.target_update_frequency == 0:
-				self.update_target_network()
+		# Should the target network be updated?
+		if self.frame_number % self.target_update_frequency == 0:
+			self.update_target_network()
 
 		self.frame_number += 1
 
-		return self.action_queue.pop()
+		return action
 
 
 	def createDataset(self, size):
@@ -241,20 +234,24 @@ class DQNController:
 		"""
 
 		# Create and populate arrays for the input, target and mask for the DQN
-		states, actions, rewards, next_states, terminals = self.replay_memory.get_samples(size)
+		states, actions, rewards, next_states, terminals = self.replay_memory.get_samples(32)
 
 		# Get what the normal output would be for the DQN
-		targets = self.current_DQN.get_Qs(states, self.sess)
+		targets = self.dqn.get_Qs(states)
+
+		target_Q = np.zeros((size,))
 
 		# Update the Q value of only the action
-		Qmax = np.max(self.target_DQN.get_Qs(next_states, self.sess), axis=1)
-		Qfuture = (1.0 - terminals.astype(np.int)) * self.discount_factor * Qmax
+		Qmax = np.max(self.target_dqn.get_Qs(next_states), axis=1)
+		Qnext = (1.0 - terminals.astype(np.float32)) * self.discount_factor * Qmax
 
 		idx = np.arange(size)
 
-		targets[idx,actions] = rewards[idx] + Qfuture[idx]
+		targets[idx,actions] = rewards[idx] + Qnext[idx]
 
-		return states, targets
+		target_Q = rewards + Qnext
+
+		return states, targets, actions, target_Q
 
 
 	def update_target_network(self):
@@ -264,13 +261,7 @@ class DQNController:
 
 		print "Updating Target DQN..."
 		
-		# Copy the variables from the current DQN to the target DQN
-		for i in range(len(self.dqn_layers)):
-			dqn_layer = self.dqn_layers[i]
-			target_layer = self.target_dqn_layers[i]
-
-			params = dqn_layer.get_params(self.sess)
-			target_layer.set_params(self.sess, params)
+		self.update_operation.run()
 
 
 	def train(self):
@@ -279,12 +270,11 @@ class DQNController:
 		"""
 
 		# Get the training data
-		inputs, targets = self.createDataset(self.minibatch_size)
-		data = {'input': inputs, 'target': targets}
+		inputs, targets, actions, target_Q = self.createDataset(self.minibatch_size)
+		data = {'input': inputs, 'target': target_Q, 'action': actions}
 
 		# Train the network
-		self.current_DQN.train(self.train_step, data)
+		loss = self.dqn.train(data)
 
-		# Summarize data
-		summaries = self.current_DQN.get_summary(self.merged_summaries, data)
-		self._writer.add_summary(summaries, self.frame_number)
+		# Summarize the Q values
+		self.tensorboard_monitor.summarize(['q_summary'], self.frame_number, {self.dqn.input: inputs})
