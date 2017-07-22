@@ -191,4 +191,16 @@ class DeepQNetwork(object):
          np.save(directory + '/' + name, param_value)
 
 
+   def restore(self, directory):
+      """
+      """
+
+      # Perform some assertions / checks to make sure that the directory exists...
+
+      for name, param in self.params.items():
+         values = np.load(directory + '/' + name + '.npy')
+
+         self.sess.run(param.assign(values))
+
+
 

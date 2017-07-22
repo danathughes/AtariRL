@@ -120,7 +120,7 @@ class DQNController:
 
 		# Need to query the replay memory for training examples
 		self.replay_memory = replay_memory
-		self.replay_start_size = kwargs.get('replay_start_size', 5000)
+		self.replay_start_size = kwargs.get('replay_start_size', 50000)
 
 		# Discount factor, etc.
 		self.discount_factor = kwargs.get('discount_factor', 0.99)
@@ -131,7 +131,7 @@ class DQNController:
 
 		# Where to store checkpoints, Tensorboard logs, etc
 		self.save_path = kwargs.get('save_path', './checkpoints/model_checkpoint')
-		self.log_dir = kwargs.get('tensorboard_log_dir', '/home/dana/Research/AtariRL/tensorboard/')
+		self.log_dir = kwargs.get('tensorboard_log_dir', '/home/dana/Research/AtariRL/log/')
 
 		# How many frames has the controller seen?
 		self.episode_number = 0
@@ -141,7 +141,7 @@ class DQNController:
 		self.can_train = False
 
 		# Keep track of frames to know when to train, switch networks, etc.
-		self.target_update_frequency = kwargs.get('target_update_frequency', 1000)
+		self.target_update_frequency = kwargs.get('target_update_frequency', 10000)
 
 		self.best_Q = np.zeros((self.num_actions,))
 

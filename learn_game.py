@@ -17,6 +17,10 @@ from models.DeepQNetwork import *
 from controllers import DQNController, EpsilonController
 from NetworkParameters import NATURE, ARXIV
 from memory import ReplayMemory
+ 
+import tensorflow as tf
+
+from listeners.checkpoint_recorder import *
 
 #from replay_memory import *
 
@@ -62,7 +66,16 @@ class AtariGameInterface:
 
 		self.frame_number = 0
 
+		# Listeners for storing parameters, tensorboard, etc.
+		self.listeners = []
 		
+
+	def add_listener(self, listener):
+		"""
+		"""
+
+		self.listeners.append(listener)
+
 
 	def update_screen(self):
 		"""
@@ -109,6 +122,9 @@ class AtariGameInterface:
 
 		score = 0
 
+		for listener in self.listeners:
+			listener.start_episode()
+
 		# Wait a random number of frames before starting
 		for i in range(np.random.randint(self.noop_max)):
 			self.ale.act(0)
@@ -129,6 +145,9 @@ class AtariGameInterface:
 
 			self.frame_number += 1
 
+			for listener in self.listeners:
+				listener.step()
+
 			# Cap reward to be between -1 and 1
 			reward = min(max(reward, -1.0), 1.0)
 
@@ -137,9 +156,12 @@ class AtariGameInterface:
 
 			self.replay_memory.record(state, action_num, reward, is_terminal)
 
-			if self.frame_number % 500000 == 0:
-				print "Saving model..."
-				self.controller.save(self.frame_number)
+#			if self.frame_number % 500000 == 0:
+#				print "Saving model..."
+#				self.controller.save(self.frame_number)
+
+		for listener in self.listeners:
+			listener.end_episode()
 
 		return score
 
@@ -179,9 +201,12 @@ class AtariGameInterface:
 				action_num = np.random.randint(len(self.move_list))
 
 			action = self.move_list[action_num]
-			reward = self.ale.act(action)
 
-			total_score += reward
+			for i in range(self.action_repeat):
+				reward = self.ale.act(action)
+				total_score += reward
+				self.update_screen()
+
 
 		self.show_while_training = old_show_while_training
 
@@ -189,11 +214,10 @@ class AtariGameInterface:
 
 
 replay_memory = ReplayMemory(1000000)
-#replay_memory.load('memory')
-
 dqn_controller = DQNController((84,84,4), NATURE, 4, replay_memory)
 controller = EpsilonController(dqn_controller, 4)
 agi = AtariGameInterface('Breakout.bin', controller, replay_memory)
+agi.add_listener(CheckpointRecorder(dqn_controller.dqn, replay_memory, './checkpoints'))
 
 # Restore things
 
