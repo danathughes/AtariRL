@@ -64,7 +64,7 @@ class EpsilonController:
 	"""
 	"""
 
-	def __init__(self, base_controller, num_actions, initial_exploration=1.0, final_exploration=0.1, final_frame=1000000):
+	def __init__(self, base_controller, num_actions, counter, initial_exploration=1.0, final_exploration=0.1, final_frame=1000000):
 		"""
 		"""
 
@@ -72,7 +72,7 @@ class EpsilonController:
 		self.eps_init = initial_exploration
 		self.eps_final = final_exploration
 
-		self.current_frame = 0
+		self.counter = counter
 		self.final_frame = final_frame
 
 		self.base_controller = base_controller
@@ -85,10 +85,8 @@ class EpsilonController:
 
 		action = self.base_controller.act(state)
 
-		self.current_frame += 1
-
-		if self.current_frame < self.final_frame:
-			self.epsilon = self.eps_init + (self.eps_final - self.eps_init)*(float(self.current_frame)/self.final_frame)
+		if self.counter.count < self.final_frame:
+			self.epsilon = self.eps_init + (self.eps_final - self.eps_init)*(float(self.counter.count)/self.final_frame)
 		else:
 			self.epsilon = self.eps_final
 
@@ -98,25 +96,20 @@ class EpsilonController:
 		return action
 
 
-	def save(self, frame_number):
-		"""
-		"""
-
-		self.base_controller.save(frame_number)
-
-
-
 class DQNController:
 	"""
 	"""
 
-	def __init__(self, input_shape, hidden_layers, num_actions, replay_memory, **kwargs):
+	def __init__(self, input_shape, hidden_layers, num_actions, replay_memory, counter, **kwargs):
 		"""
 		action_update_rate - number of frames to repeat an action
 		"""
 
 		self.num_actions = num_actions
 		self.dqn_layers = hidden_layers
+
+		# Which frame / step are we on 
+		self.counter = counter
 
 		# Need to query the replay memory for training examples
 		self.replay_memory = replay_memory
@@ -132,18 +125,16 @@ class DQNController:
 		# Where to store checkpoints, Tensorboard logs, etc
 		self.save_path = kwargs.get('save_path', './checkpoints/model_checkpoint')
 		self.log_dir = kwargs.get('tensorboard_log_dir', '/home/dana/Research/AtariRL/log/')
-
-		# How many frames has the controller seen?
-		self.episode_number = 0
-		self.frame_number = 0
 		
 		# Should the network train?
-		self.can_train = False
+		if self.counter.count >= self.replay_start_size:
+			self.can_train = True
+			print "DQN can train..."
+		else:
+			self.can_train = False
 
 		# Keep track of frames to know when to train, switch networks, etc.
 		self.target_update_frequency = kwargs.get('target_update_frequency', 10000)
-
-		self.best_Q = np.zeros((self.num_actions,))
 
 		# Did the user provide a session?
 		self.sess = kwargs.get('tf_session', tf.InteractiveSession())
@@ -154,26 +145,7 @@ class DQNController:
 
 		self.update_operation = UpdateOperation(self.dqn, self.target_dqn, self.sess)
 
-		# Create an operator to update the target weights from the current DQN
-#		self.update_operations = []
-
-#		with tf.variable_scope('update_operation'):
-#			for name in self.dqn.params:
-#				op = self.target_DQN.params[name].assign(self.dqn.params[name].value())
-#				self.update_operations.append(op)
-
-
-		# Be able to save and restore the dqn checkpoints
-		self.saver = tf.train.Saver(var_list=self.dqn.params, max_to_keep=1)
-
 		tf.global_variables_initializer().run()
-
-		# Should a model be loaded?
-#		self.restore_path = kwargs.get('restore_path', '/home/dana/Research/AtariRL/checkpoints')
-		self.restore_path = None
-		if self.restore_path is not None:
-			print "Restoring Model..."
-			self.saver.restore(self.sess, tf.train.latest_checkpoint(self.restore_path))
 
 		# Summaries
 		self.tensorboard_monitor = TensorboardMonitor(self.log_dir, self.sess)
@@ -184,15 +156,6 @@ class DQNController:
 
 		# Make sure that the DQN and target network are the same before beginning.
 		self.update_target_network()
-
-
-	def save(self, frame_number):
-		"""
-		Save the DQN model
-		"""
-
-		self.saver.save(self.sess, self.save_path, global_step=frame_number)
-		self.replay_memory.save('./memory')
 
 
 	def act(self, state):
@@ -207,24 +170,18 @@ class DQNController:
 		Q = self.dqn.get_Qs(self.state_history)
 		action = np.argmax(Q)
 
-
-		for i in range(self.num_actions):
-			self.best_Q[i] = max(self.best_Q[i], Q[i])
-
 		# Has enough frames occured to start training?
-		if self.frame_number == self.replay_start_size:
+		if self.counter.count == self.replay_start_size:
 			self.can_train = True
 			print "Start Training..."
 
 		# Should training occur?  
-		if self.frame_number % self.update_frequency == 0 and self.can_train:
+		if self.counter.count % self.update_frequency == 0 and self.can_train:
 			self.train()
 
 		# Should the target network be updated?
-		if self.frame_number % self.target_update_frequency == 0:
+		if self.counter.count % self.target_update_frequency == 0:
 			self.update_target_network()
-
-		self.frame_number += 1
 
 		return action
 
@@ -277,4 +234,4 @@ class DQNController:
 		loss = self.dqn.train(data)
 
 		# Summarize the Q values
-		self.tensorboard_monitor.summarize(['q_summary'], self.frame_number, {self.dqn.input: inputs})
+		self.tensorboard_monitor.summarize(['q_summary'], self.counter.count, {self.dqn.input: inputs})

@@ -25,11 +25,32 @@ from listeners.checkpoint_recorder import *
 #from replay_memory import *
 
 
+class Counter:
+	"""
+	Simple class to maintain a shared counter between objects
+	"""
+
+	def __init__(self, initial_count=0):
+		"""
+		"""
+
+		self.count = initial_count
+
+
+	def step(self):
+		"""
+		Increment the counter
+		"""
+
+		self.count += 1
+
+
+
 class AtariGameInterface:
 	"""
 	"""
 
-	def __init__(self, game_filename, controller, replay_memory, **kwargs):
+	def __init__(self, game_filename, controller, replay_memory, counter, **kwargs):
 		"""
 		Load the game and create a display using pygame
 		"""
@@ -44,6 +65,7 @@ class AtariGameInterface:
 		# Create the ALE interface and load the game
 		self.ale = ALEInterface()
 		self.ale.setBool('color_averaging', True)
+		self.ale.setFloat('repeat_action_probability', 0.0)
 		self.ale.loadROM(game_filename)
 
 		# Grab the set of available moves
@@ -64,7 +86,7 @@ class AtariGameInterface:
 		self.noop_max = kwargs.get('noop_max', 30)
 		self.action_repeat = kwargs.get('action_repeat', 4)
 
-		self.frame_number = 0
+		self.counter = counter
 
 		# Listeners for storing parameters, tensorboard, etc.
 		self.listeners = []
@@ -143,7 +165,7 @@ class AtariGameInterface:
 
 			score += reward
 
-			self.frame_number += 1
+			self.counter.step()
 
 			for listener in self.listeners:
 				listener.step()
@@ -156,9 +178,6 @@ class AtariGameInterface:
 
 			self.replay_memory.record(state, action_num, reward, is_terminal)
 
-#			if self.frame_number % 500000 == 0:
-#				print "Saving model..."
-#				self.controller.save(self.frame_number)
 
 		for listener in self.listeners:
 			listener.end_episode()
@@ -185,7 +204,6 @@ class AtariGameInterface:
 
 		total_score = 0
 
-		# Ignore whether or not to update the screen
 		old_show_while_training = self.show_while_training
 		self.show_while_training = True
 
@@ -213,21 +231,27 @@ class AtariGameInterface:
 		return total_score
 
 
+counter = Counter(16000000)
+
 replay_memory = ReplayMemory(1000000)
-dqn_controller = DQNController((84,84,4), NATURE, 4, replay_memory)
-controller = EpsilonController(dqn_controller, 4)
-agi = AtariGameInterface('Breakout.bin', controller, replay_memory)
-agi.add_listener(CheckpointRecorder(dqn_controller.dqn, replay_memory, './checkpoints'))
+dqn_controller = DQNController((84,84,4), NATURE, 4, replay_memory, counter)
+controller = EpsilonController(dqn_controller, 4, counter)
+agi = AtariGameInterface('Breakout.bin', controller, replay_memory, counter)
+agi.add_listener(CheckpointRecorder(dqn_controller.dqn, replay_memory, counter, './checkpoints'))
 
 # Restore things
+dqn_controller.dqn.restore('./checkpoints/dqn/16000000')
+dqn_controller.update_target_network()
+replay_memory.load('./checkpoints/replay_memory/16000000')
+
 
 def run():
 	cur_episode = 0
 	num_frames = 0
-	while agi.frame_number < 50000000:
+	while counter.count < 50000000:
 		score = agi.learn()
-		elapsed_frames = agi.frame_number - num_frames
-		num_frames = agi.frame_number
+		elapsed_frames = counter.count - num_frames
+		num_frames = counter.count
 		print "Episode %d:  Total Score = %d\t# Frames = %d\tTotal Frames = %d\tEpsilon: %f" % (cur_episode, score, elapsed_frames, num_frames, controller.epsilon)
 		cur_episode += 1
 
