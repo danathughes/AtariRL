@@ -114,9 +114,6 @@ class DeepQNetwork(object):
       with tf.variable_scope(self._network_name):
         self.input = tf.placeholder(tf.float32, shape=(None,) + tuple(frame_shape), name='input')
 
-#        if self._trainable:
-#          self.target = tf.placeholder(tf.float32, shape=(None, num_actions), name='target')
-
         # Build up the hidden layers for the network
         # Start by reshaping the input to work with the 2D convolutional tensors
         current_layer = self.input

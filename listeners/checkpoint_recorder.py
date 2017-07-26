@@ -43,7 +43,7 @@ class CheckpointRecorder(object):
 		pass
 
 
-	def step(self, **kwargs):
+	def record(self, data=None, **kwargs):
 		"""
 		"""
 

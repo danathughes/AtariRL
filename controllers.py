@@ -6,7 +6,10 @@ import scipy.ndimage as ndimage
 import tensorflow as tf
 from models.DeepQNetwork import *
 
-from monitor import *
+from listeners.tensorboard_monitor import *
+
+import pygame
+from pygame.locals import *
 
 
 class RandomController:
@@ -122,10 +125,6 @@ class DQNController:
 		# Count the actions to determine action repeats and update frequencies
 		self.update_frequency = kwargs.get('update_frequency', 4)
 
-		# Where to store checkpoints, Tensorboard logs, etc
-		self.save_path = kwargs.get('save_path', './checkpoints/model_checkpoint')
-		self.log_dir = kwargs.get('tensorboard_log_dir', '/home/dana/Research/AtariRL/log/')
-		
 		# Should the network train?
 		if self.counter.count >= self.replay_start_size:
 			self.can_train = True
@@ -145,17 +144,17 @@ class DQNController:
 
 		self.update_operation = UpdateOperation(self.dqn, self.target_dqn, self.sess)
 
-		tf.global_variables_initializer().run()
-
-		# Summaries
-		self.tensorboard_monitor = TensorboardMonitor(self.log_dir, self.sess)
-		self.tensorboard_monitor.add_dqn_summary(self.dqn)
-
 		# Maintain a history of the previous states for use as input
 		self.state_history = np.zeros((84,84,4))
 
-		# Make sure that the DQN and target network are the same before beginning.
-		self.update_target_network()
+		self.listeners = []
+
+
+	def add_listener(self, listener):
+		"""
+		"""
+
+		self.listeners.append(listener)
 
 
 	def act(self, state):
@@ -232,6 +231,13 @@ class DQNController:
 
 		# Train the network
 		loss = self.dqn.train(data)
+		Qs = self.dqn.get_Qs(inputs)
 
-		# Summarize the Q values
-		self.tensorboard_monitor.summarize(['q_summary'], self.counter.count, {self.dqn.input: inputs})
+		# Summarize the Q values and training loss
+		training_data = {'training_loss': loss}
+		for i in range(self.num_actions):
+			training_data['Q%d_training' % i] = Qs[:,i]
+
+		for listener in self.listeners:
+			listener.record(training_data)
+		
