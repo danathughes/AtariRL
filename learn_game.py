@@ -96,6 +96,10 @@ class AtariGameInterface:
 
 		score = 0
 
+		for listener in self.listeners:
+			listener.start_episode({})
+
+
 		# Wait a random number of frames before starting
 		for i in range(np.random.randint(self.noop_max)):
 			self.environment.act(0)
@@ -104,7 +108,7 @@ class AtariGameInterface:
 			self.environment.update_screen()
 
 			state = self.environment.get_reduced_screen()
-			action = self.controller.act(state)
+			action, Q = self.controller.act(state)
 
 			# Run the action 4 times
 			reward = 0.0
@@ -115,19 +119,19 @@ class AtariGameInterface:
 
 			self.counter.step()
 
-			for listener in self.listeners:
-				listener.record(None)
-
 			# Cap reward to be between -1 and 1
 			reward = min(max(reward, -1.0), 1.0)
 
-#			if self.environment.lives() != num_lives:
-#				reward = -1.0
+			for listener in self.listeners:
+				listener.record({'Q': np.max(Q), 'reward': reward, 'action': action})
 
 			is_terminal = self.environment.terminal() or self.environment.lives() != num_lives
 			num_lives = self.environment.lives()
 
 			self.replay_memory.record(state, action, reward, is_terminal)
+
+		for listener in self.listeners:
+			listener.end_episode({'score': score})
 
 		return score
 
@@ -165,7 +169,7 @@ class AtariGameInterface:
 
 
 sess = tf.InteractiveSession()
-counter = Counter()
+counter = Counter(2000000)
 
 replay_memory = ReplayMemory(1000000)
 dqn_controller = DQNController((84,84,4), NATURE, 4, replay_memory, counter, tf_session=sess)
@@ -174,10 +178,10 @@ agi = AtariGameInterface('Breakout.bin', controller, replay_memory, counter)
 
 # Create a Tensorboard monitor and populate with the desired summaries
 tensorboard_monitor = TensorboardMonitor('./log', sess, counter)
-tensorboard_monitor.add_scalar_summary('score')
-tensorboard_monitor.add_scalar_summary('training_loss')
+tensorboard_monitor.add_scalar_summary('score', 'per_game_summary')
+tensorboard_monitor.add_scalar_summary('training_loss', 'training_summary')
 for i in range(4):
-	tensorboard_monitor.add_histogram_summary('Q%d_training' % i)
+	tensorboard_monitor.add_histogram_summary('Q%d_training' % i, 'training_summary')
 
 agi.add_listener(CheckpointRecorder(dqn_controller.dqn, replay_memory, counter, './checkpoints'))
 agi.add_listener(tensorboard_monitor)
@@ -186,9 +190,9 @@ dqn_controller.add_listener(tensorboard_monitor)
 sess.run(tf.global_variables_initializer())
 
 # Restore things
-#dqn_controller.dqn.restore('./checkpoints/dqn/16000000')
-#dqn_controller.update_target_network()
-#replay_memory.load('./checkpoints/replay_memory/16000000')
+dqn_controller.dqn.restore('./checkpoints/dqn/2000000')
+dqn_controller.update_target_network()
+replay_memory.load('./checkpoints/replay_memory/2000000')
 
 
 def run():

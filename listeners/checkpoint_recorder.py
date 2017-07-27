@@ -29,14 +29,14 @@ class CheckpointRecorder(object):
 		self.memory_record_frequency = kwargs.get('replay_memory_record_frequency', 1000000)
 
 
-	def start_episode(self, **kwargs):
+	def start_episode(self, data=None, **kwargs):
 		"""
 		"""
 
 		pass
 
 
-	def end_episode(self, **kwargs):
+	def end_episode(self, data=None, **kwargs):
 		"""
 		"""
 
@@ -63,6 +63,8 @@ class CheckpointRecorder(object):
 		"""
 
 		pass
+
+
 
 
 

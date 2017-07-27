@@ -86,7 +86,7 @@ class EpsilonController:
 		"""
 		"""
 
-		action = self.base_controller.act(state)
+		action, Q = self.base_controller.act(state)
 
 		if self.counter.count < self.final_frame:
 			self.epsilon = self.eps_init + (self.eps_final - self.eps_init)*(float(self.counter.count)/self.final_frame)
@@ -96,7 +96,7 @@ class EpsilonController:
 		if np.random.random() < self.epsilon:
 			action = np.random.randint(self.num_actions)
 
-		return action
+		return action, Q
 
 
 class DQNController:
@@ -182,7 +182,7 @@ class DQNController:
 		if self.counter.count % self.target_update_frequency == 0:
 			self.update_target_network()
 
-		return action
+		return action, Q
 
 
 	def createDataset(self, size):
