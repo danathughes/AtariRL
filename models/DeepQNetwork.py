@@ -53,7 +53,9 @@ class Optimizer(object):
     self.learning_rate = kwargs.get('learning_rate', 0.00025)
     self.momentum = kwargs.get('momentum', 0.95)
     self.epsilon = kwargs.get('epsilon', 0.01)
-    self.decay = kwargs.get('decay', 0.01)
+    self.decay = kwargs.get('decay', 0.95)
+
+    # Alternative has RMS Params as: Learning Rate = 0.00025, Decay = 0.99, Momentum = 0.95, Epsilon=1e-6
 
     with tf.variable_scope(self._name):
       # Input to the optimizer is the DQN output, the action performed and the Q value of the target DQN
@@ -61,6 +63,7 @@ class Optimizer(object):
 
       self.action = tf.placeholder(tf.uint8, [None], name='action')
       self.target_q = tf.placeholder(tf.float32, [None], name='target_Q_value')
+
 
       action_one_hot = tf.one_hot(self.action, num_actions, 1.0, 0.0)
       action_q = tf.reduce_sum(self.q_values*action_one_hot, reduction_indices=1, name='action_q')
@@ -76,14 +79,14 @@ class Optimizer(object):
 
       # Create the optimization operation
       self.optimizer = tf.train.RMSPropOptimizer(self.learning_rate, momentum=self.momentum, epsilon=self.epsilon)
-
+#      self.optimizer = tf.train.AdamOptimizer(self.learning_rate)
       # Need to clip gradients between -1 and 1 to stabilize learning
-#      grads_and_vars = self.optimizer.compute_gradients(self.loss)
-#      capped_grads_and_vars = [(tf.clip_by_value(grad, -1.0, 1.0), var) if grad is not None else (None, var) for grad, var in grads_and_vars]
-#      self.train_step = self.optimizer.apply_gradients(capped_grads_and_vars)
+      grads_and_vars = self.optimizer.compute_gradients(self.loss)
+      capped_grads_and_vars = [(tf.clip_by_value(grad, -1.0, 1.0), var) if grad is not None else (None, var) for grad, var in grads_and_vars]
+      self.train_step = self.optimizer.apply_gradients(capped_grads_and_vars)
 
       # Make a training step to minimize the loss function
-      self.train_step = self.optimizer.minimize(self.loss)
+#      self.train_step = self.optimizer.minimize(self.loss)
 
 
 class DeepQNetwork(object):
@@ -135,6 +138,8 @@ class DeepQNetwork(object):
       else:
         self._objective = None
         self.optimizer = None
+
+      self.saver = tf.train.Saver()
         
 
    def get_Qs(self, states):
@@ -172,7 +177,7 @@ class DeepQNetwork(object):
       return loss
 
 
-   def save(self, directory):
+   def save(self, directory, step=0):
       """
       Save the current values of the parameters as numpy arrays
       """
@@ -187,6 +192,8 @@ class DeepQNetwork(object):
 
          np.save(directory + '/' + name, param_value)
 
+      self.saver.save(self.sess, directory + '/dqn_model', global_step=step)
+
 
    def restore(self, directory):
       """
@@ -194,10 +201,14 @@ class DeepQNetwork(object):
 
       # Perform some assertions / checks to make sure that the directory exists...
 
-      for name, param in self.params.items():
-         values = np.load(directory + '/' + name + '.npy')
+#      for name, param in self.params.items():
+#         values = np.load(directory + '/' + name + '.npy')
 
-         self.sess.run(param.assign(values))
+#         self.sess.run(param.assign(values))
+
+      print directory
+
+      self.saver.restore(self.sess, directory + '/dqn_model-4000000' )
 
 
 

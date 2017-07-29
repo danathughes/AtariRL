@@ -11,7 +11,7 @@ class TensorboardMonitor:
 
 		self.name = kwargs.get('name', 'summary')
 		self.num_actions = kwargs.get('num_actions', 4)
-		self.report_frequency = kwargs.get('report_frequency', 50000)
+		self.report_frequency = kwargs.get('report_frequency', 10000)
 
 		self.sess = sess
 		self.logdir = logdir

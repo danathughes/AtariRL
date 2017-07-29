@@ -8,7 +8,7 @@ class CheckpointRecorder(object):
 	"""
 	"""
 
-	def __init__(self, dqn, replay_memory, counter, directory, **kwargs):
+	def __init__(self, dqn, replay_memory, counter, directory, sess, **kwargs):
 		"""
 		"""
 
@@ -17,6 +17,8 @@ class CheckpointRecorder(object):
 		self.checkpoint_dir = directory
 
 		self.counter = counter
+
+		self.sess = sess
 
 		# Check to see if the directory exists.  If not, create a new one
 		if not os.path.exists(self.checkpoint_dir + '/replay_memory'):
@@ -53,10 +55,17 @@ class CheckpointRecorder(object):
 			self.replay_memory.save(self.checkpoint_dir + '/replay_memory/' + str(self.counter.count))
 		if self.counter.count % self.dqn_record_frequency == 0:
 			print "Saving DQN Model..."
-			self.dqn.save(self.checkpoint_dir + '/dqn/' + str(self.counter.count))
+			self.dqn.save(self.checkpoint_dir + '/dqn/' + str(self.counter.count), self.counter.count)
 
 
-	def restore(self, frame_number=None):
+	def restore(self, frame_number):
+		"""
+		"""
+
+		self.dqn.restore(self.checkpoint_dir + '/dqn/' + str(frame_number))
+
+
+	def restore_npy(self, frame_number=None):
 		"""
 		Restore the DQN and replay memory to the provided frame number, or the
 		most current one if not provided
