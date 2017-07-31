@@ -169,7 +169,7 @@ class AtariGameInterface:
 
 
 sess = tf.InteractiveSession()
-counter = Counter()
+counter = Counter(1000000)
 
 replay_memory = ReplayMemory(1000000)
 dqn_controller = DQNController((84,84,4), NATURE, 4, replay_memory, counter, tf_session=sess)
@@ -191,15 +191,15 @@ dqn_controller.add_listener(tensorboard_monitor)
 sess.run(tf.global_variables_initializer())
 
 # Restore things
-#dqn_controller.dqn.restore(4000000)
-#checkpoint_monitor.restore(5000000)
-#dqn_controller.update_target_network()
-#replay_memory.load('./checkpoints/replay_memory/5000000')
+#dqn_controller.dqn.restore(1000000)
+checkpoint_monitor.restore(1000000)
+dqn_controller.update_target_network()
+replay_memory.load('./checkpoints/replay_memory/1000000')
 
 
 def run():
 	cur_episode = 0
-	num_frames = 5000000
+	num_frames = 1000000
 	while counter.count < 50000000:
 		score = agi.learn()
 

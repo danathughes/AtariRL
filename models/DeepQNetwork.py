@@ -208,7 +208,7 @@ class DeepQNetwork(object):
 
       print directory
 
-      self.saver.restore(self.sess, directory + '/dqn_model-4000000' )
+      self.saver.restore(self.sess, directory + '/dqn_model-1000000' )
 
 
 
