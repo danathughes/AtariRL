@@ -136,26 +136,26 @@ class AtariGameInterface:
 		return score
 
 
-	def play(self, epsilon=0.1):
+	def play(self, epsilon=0.1, num_noop = 0):
 		"""
 		Allow the controller to play the game
 		"""
 
 		total_score = 0
 
-		old_show_while_training = self.show_while_training
-		self.show_while_training = True
-
 		# Reset the game to start a new episode
 		self.environment.reset_game()
+
+		for i in range(num_noop):
+			_ = self.environment.act(0)
 
 		while not self.environment.terminal():
 			self.environment.update_screen()
 
 			state = self.environment.get_reduced_screen()
-			action_num = self.controller.base_controller.act(state)
+			action, Q = self.controller.base_controller.act(state)
 			if np.random.random() < epsilon:
-				action = np.random.randint(len(self.move_list))
+				action = np.random.randint(4)
 
 			for i in range(self.action_repeat):
 				reward = self.environment.act(action)
@@ -163,13 +163,11 @@ class AtariGameInterface:
 				self.environment.update_screen()
 
 
-		self.show_while_training = old_show_while_training
-
 		return total_score
 
 
 sess = tf.InteractiveSession()
-counter = Counter(1000000)
+counter = Counter(16500000)
 
 replay_memory = ReplayMemory(1000000)
 dqn_controller = DQNController((84,84,4), NATURE, 4, replay_memory, counter, tf_session=sess)
@@ -192,14 +190,14 @@ sess.run(tf.global_variables_initializer())
 
 # Restore things
 #dqn_controller.dqn.restore(1000000)
-checkpoint_monitor.restore(1000000)
+checkpoint_monitor.restore(16500000)
 dqn_controller.update_target_network()
-replay_memory.load('./checkpoints/replay_memory/1000000')
+replay_memory.load('./checkpoints/replay_memory/16000000')
 
 
 def run():
 	cur_episode = 0
-	num_frames = 1000000
+	num_frames = 16500000
 	while counter.count < 50000000:
 		score = agi.learn()
 

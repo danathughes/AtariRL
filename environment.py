@@ -1,5 +1,8 @@
 from ale_python_interface import ALEInterface
 
+import pygame
+from pygame.locals import *
+
 import numpy as np
 import os
 
@@ -15,6 +18,13 @@ class AtariEnvironment:
 		"""
 		Create an environment with the provided game
 		"""
+
+		pygame.init()
+
+		self.screen = pygame.display.set_mode((160,210))
+		self.fps_clock = pygame.time.Clock()
+
+		self.show_while_training = True
 
 		# Buffer for grabbing the screen from ALE
 		self.screen_buffer = np.zeros((100800,), np.uint8)
@@ -41,11 +51,12 @@ class AtariEnvironment:
 #		if self.show_while_training:
 #			game_screen = self.screen_buffer.reshape((210,160,3))
 #			game_screen = np.transpose(game_screen, (1,0,2))
-
+#
 #			game_surface = pygame.surfarray.make_surface(game_screen)
 #			self.screen.blit(game_surface, (0,0))
 
 #			pygame.display.flip()
+
 
 
 	def get_reduced_screen(self):
