@@ -8,8 +8,8 @@ from models.DeepQNetwork import *
 
 from listeners.tensorboard_monitor import *
 
-import pygame
-from pygame.locals import *
+#import pygame
+#from pygame.locals import *
 
 
 class RandomController:
@@ -29,38 +29,6 @@ class RandomController:
 
 		return np.random.randint(self.num_actions)
 
-
-class HumanController:
-	"""
-	"""
-
-	def __init__(self, num_actions):
-		"""
-		"""
-
-		pass
-
-	def act(self, state):
-		"""
-		Use pygame to get the action from the user
-		"""
-
-		action = 0
-
-		pygame.event.get()
-
-		keys = pygame.key.get_pressed()
-
-		if keys[K_LEFT]:
-				action = 3
-		elif keys[K_RIGHT]:
-				action = 2 
-		elif keys[K_SPACE]:
-			action = 1
-		else:
-			action = 0
-
-		return action
 
 
 class EpsilonController:

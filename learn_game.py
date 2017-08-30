@@ -4,8 +4,8 @@
 
 # Import libraries to simulate Atari and display results
 from ale_python_interface import ALEInterface
-import pygame
-from pygame.locals import *
+#import pygame
+#from pygame.locals import *
 
 import numpy as np
 import os
@@ -199,7 +199,7 @@ sess.run(tf.global_variables_initializer())
 
 def run():
 	cur_episode = 0
-	num_frames = 5000000
+	num_frames = 0
 	while counter.count < 50000000:
 		score = agi.learn()
 

@@ -51,11 +51,11 @@ class Optimizer(object):
 
     # Discount factor, learning rate, momentum, etc.
     self.learning_rate = kwargs.get('learning_rate', 0.00025)
-    self.momentum = kwargs.get('momentum', 0.95)
-    self.epsilon = kwargs.get('epsilon', 0.01)
-    self.decay = kwargs.get('decay', 0.95)
+    self.momentum = kwargs.get('momentum', 0.0)
+    self.epsilon = kwargs.get('epsilon', 1e-6)
+    self.decay = kwargs.get('decay', 0.99)
 
-    # Alternative has RMS Params as: Learning Rate = 0.00025, Decay = 0.99, Momentum = 0.95, Epsilon=1e-6
+    # Alternative has RMS Params as: Learning Rate = 0.00025, Decay = 0.99, Momentum = 0.0, Epsilon=1e-6
 
     with tf.variable_scope(self._name):
       # Input to the optimizer is the DQN output, the action performed and the Q value of the target DQN
@@ -78,7 +78,7 @@ class Optimizer(object):
       self.loss = tf.reduce_mean(self.huber_loss, name='loss')
 
       # Create the optimization operation
-      self.optimizer = tf.train.RMSPropOptimizer(self.learning_rate, momentum=self.momentum, epsilon=self.epsilon)
+      self.optimizer = tf.train.RMSPropOptimizer(self.learning_rate, decay=self.decay, momentum=self.momentum, epsilon=self.epsilon)
 #      self.optimizer = tf.train.AdamOptimizer(self.learning_rate)
       # Need to clip gradients between -1 and 1 to stabilize learning
       grads_and_vars = self.optimizer.compute_gradients(self.loss)
