@@ -78,15 +78,12 @@ class Optimizer(object):
       self.loss = tf.reduce_mean(self.huber_loss, name='loss')
 
       # Create the optimization operation
-      self.optimizer = tf.train.RMSPropOptimizer(self.learning_rate, decay=self.decay, momentum=self.momentum, epsilon=self.epsilon)
-#      self.optimizer = tf.train.AdamOptimizer(self.learning_rate)
+      self.optimizer = tf.train.RMSPropOptimizer(self.learning_rate, momentum=self.momentum, epsilon=self.epsilon)
+
       # Need to clip gradients between -1 and 1 to stabilize learning
       grads_and_vars = self.optimizer.compute_gradients(self.loss)
       capped_grads_and_vars = [(tf.clip_by_value(grad, -1.0, 1.0), var) if grad is not None else (None, var) for grad, var in grads_and_vars]
       self.train_step = self.optimizer.apply_gradients(capped_grads_and_vars)
-
-      # Make a training step to minimize the loss function
-#      self.train_step = self.optimizer.minimize(self.loss)
 
 
 class DeepQNetwork(object):

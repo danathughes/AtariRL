@@ -8,9 +8,6 @@ from models.DeepQNetwork import *
 
 from listeners.tensorboard_monitor import *
 
-#import pygame
-#from pygame.locals import *
-
 
 class RandomController:
 	"""
@@ -209,3 +206,4 @@ class DQNController:
 		for listener in self.listeners:
 			listener.record(training_data)
 		
+

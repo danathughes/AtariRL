@@ -15,7 +15,7 @@ import scipy.ndimage as ndimage
 from models.DeepQNetwork import *
 
 from controllers import DQNController, EpsilonController
-from NetworkParameters import NATURE, ARXIV
+from models.networks import NATURE, NIPS
 from memory import ReplayMemory
  
 from environment import AtariEnvironment
