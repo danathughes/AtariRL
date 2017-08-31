@@ -72,17 +72,34 @@ class DQN_Agent:
 		self.listeners.append(listener)
 
 
-	def act(self, state):
+	def observe(self, state):
 		"""
-		Update the state history and select an action
+		Receive an observation
 		"""
 
 		self.state_history[:,:,0:3] = self.state_history[:,:,1:4]
 		self.state_history[:,:,3] = state
 
+
+	def act(self):
+		"""
+		Select an action based on the current state history
+		"""
+
 		# Select an action
 		Q = self.dqn.get_Qs(self.state_history)
 		action = np.argmax(Q)
+
+		return action, Q
+
+
+	def learn(self, action, reward, is_terminal):
+		"""
+		Learn from the action taken (maybe due to environmental influence, etc), provided reward and next state
+		"""
+
+		# Add the experience to the replay memory
+		self.replay_memory.record(self.state_history[:,:,3], action, reward, is_terminal)		
 
 		# Has enough frames occured to start training?
 		if self.counter.count == self.replay_start_size:
@@ -96,8 +113,6 @@ class DQN_Agent:
 		# Should the target network be updated?
 		if self.counter.count % self.target_update_frequency == 0:
 			self.update_target_network()
-
-		return action, Q
 
 
 	def createDataset(self, size):
@@ -180,7 +195,7 @@ class DoubleDQN_Agent(DQN_Agent):
 		"""
 
 		# Create and populate arrays for the input, target and mask for the DQN
-		states, actions, rewards, next_states, terminals = self.replay_memory.get_samples(32)
+		states, actions, rewards, next_states, terminals = self.replay_memory.get_samples(size)
 
 		# Get what the normal output would be for the DQN
 		targets = self.dqn.get_Qs(states)
@@ -188,8 +203,14 @@ class DoubleDQN_Agent(DQN_Agent):
 		target_Q = np.zeros((size,))
 
 		# Update the Q value of only the action
-		Qmax = np.max(self.target_dqn.get_Qs(next_states), axis=1)
-		Qnext = (1.0 - terminals.astype(np.float32)) * self.discount_factor * Qmax
+
+		# Double-Q learning:  let the DQN select which action would be performed on the next state
+		dqn_next_Qs = self.dqn.get_Qs(next_states)
+		dqn_next_actions = np.argmax(dqn_next_Qs, axis=1)
+
+		# Use the Q value of the action selected by the DQN, *not* the max Q value
+		Q_value = self.target_dqn.get_Qs(next_states)[np.arange(size), dqn_next_actions]
+		Qnext = (1.0 - terminals.astype(np.float32)) * self.discount_factor * Q_value
 
 		idx = np.arange(size)
 

@@ -25,11 +25,20 @@ class EpsilonAgent:
 		self.num_actions = num_actions
 
 
-	def act(self, state):
+	def observe(self, state):
+		"""
+		Receive an observation
+		"""
+
+		self.base_controller.observe(state)
+
+
+
+	def act(self):
 		"""
 		"""
 
-		action, Q = self.base_controller.act(state)
+		action, Q = self.base_controller.act()
 
 		if self.counter.count < self.final_frame:
 			self.epsilon = self.eps_init + (self.eps_final - self.eps_init)*(float(self.counter.count)/self.final_frame)
@@ -40,3 +49,11 @@ class EpsilonAgent:
 			action = np.random.randint(self.num_actions)
 
 		return action, Q
+
+
+	def learn(self, action, reward, is_terminal):
+		"""
+		Learn from the action taken (maybe due to environmental influence, etc), provided reward and next state
+		"""
+
+		self.base_controller.learn(action, reward, is_terminal)

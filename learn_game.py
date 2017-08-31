@@ -14,9 +14,10 @@ import scipy.ndimage as ndimage
 
 from models.DeepQNetwork import *
 
-from controllers import DQNController, EpsilonController
+from agents.dqn_agent import DQN_Agent
+from agents.epsilon_agent import EpsilonAgent
 from models.networks import NATURE, NIPS
-from memory import ReplayMemory
+from memory.memory import ReplayMemory
  
 from environment import AtariEnvironment
 
@@ -54,7 +55,7 @@ class AtariGameInterface:
 	"""
 	"""
 
-	def __init__(self, game_filename, controller, replay_memory, counter, **kwargs):
+	def __init__(self, game_filename, controller, counter, **kwargs):
 		"""
 		Load the game and create a display using pygame
 		"""
@@ -63,7 +64,6 @@ class AtariGameInterface:
 		
 		# Hang on to the provided controller and replay memory
 		self.controller = controller
-		self.replay_memory = replay_memory
 
 		self.evaluate = False
 
@@ -108,7 +108,10 @@ class AtariGameInterface:
 			self.environment.update_screen()
 
 			state = self.environment.get_reduced_screen()
-			action, Q = self.controller.act(state)
+
+			# Have the agent observe the environment, then act
+			self.controller.observe(state)
+			action, Q = self.controller.act()
 
 			# Run the action 4 times
 			reward = 0.0
@@ -128,7 +131,7 @@ class AtariGameInterface:
 			is_terminal = self.environment.terminal() or self.environment.lives() != num_lives
 			num_lives = self.environment.lives()
 
-			self.replay_memory.record(state, action, reward, is_terminal)
+			self.controller.learn(action, reward, is_terminal)
 
 		for listener in self.listeners:
 			listener.end_episode({'score': score})
@@ -167,12 +170,12 @@ class AtariGameInterface:
 
 
 sess = tf.InteractiveSession()
-counter = Counter(16500000)
+counter = Counter()
 
 replay_memory = ReplayMemory(1000000)
-dqn_controller = DQNController((84,84,4), NATURE, 4, replay_memory, counter, tf_session=sess)
-controller = EpsilonController(dqn_controller, 4, counter)
-agi = AtariGameInterface('Breakout.bin', controller, replay_memory, counter)
+dqn_agent = DQN_Agent((84,84,4), NATURE, 4, replay_memory, counter, tf_session=sess)
+agent = EpsilonAgent(dqn_agent, 4, counter)
+agi = AtariGameInterface('Breakout.bin', agent, counter)
 
 # Create a Tensorboard monitor and populate with the desired summaries
 tensorboard_monitor = TensorboardMonitor('./log', sess, counter)
@@ -181,23 +184,23 @@ tensorboard_monitor.add_scalar_summary('training_loss', 'training_summary')
 for i in range(4):
 	tensorboard_monitor.add_histogram_summary('Q%d_training' % i, 'training_summary')
 
-checkpoint_monitor = CheckpointRecorder(dqn_controller.dqn, replay_memory, counter, './checkpoints', sess)
+checkpoint_monitor = CheckpointRecorder(dqn_agent.dqn, replay_memory, counter, './checkpoints', sess)
 agi.add_listener(checkpoint_monitor)
 agi.add_listener(tensorboard_monitor)
-dqn_controller.add_listener(tensorboard_monitor)
+dqn_agent.add_listener(tensorboard_monitor)
 
 sess.run(tf.global_variables_initializer())
 
 # Restore things
-#dqn_controller.dqn.restore(1000000)
-checkpoint_monitor.restore(16500000)
-dqn_controller.update_target_network()
-replay_memory.load('./checkpoints/replay_memory/16000000')
+#dqn_agent.dqn.restore(1000000)
+#checkpoint_monitor.restore(16500000)
+dqn_agent.update_target_network()
+# replay_memory.load('./checkpoints/replay_memory/16000000')
 
 
 def run():
 	cur_episode = 0
-	num_frames = 16500000
+	num_frames = 0
 	while counter.count < 50000000:
 		score = agi.learn()
 
@@ -205,7 +208,7 @@ def run():
 
 		elapsed_frames = counter.count - num_frames
 		num_frames = counter.count
-		print "Episode %d:  Total Score = %d\t# Frames = %d\tTotal Frames = %d\tEpsilon: %f" % (cur_episode, score, elapsed_frames, num_frames, controller.epsilon)
+		print "Episode %d:  Total Score = %d\t# Frames = %d\tTotal Frames = %d\tEpsilon: %f" % (cur_episode, score, elapsed_frames, num_frames, agent.epsilon)
 		cur_episode += 1
 
 	print
