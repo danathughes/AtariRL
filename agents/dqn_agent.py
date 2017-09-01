@@ -9,7 +9,7 @@ import os
 import scipy.ndimage as ndimage
 
 import tensorflow as tf
-from models.DeepQNetwork import *
+#from models.DeepQNetwork import *
 from models.DuelingDeepQNetwork import *
 
 from listeners.tensorboard_monitor import *

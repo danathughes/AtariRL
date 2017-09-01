@@ -26,6 +26,7 @@ class AtariEnvironment:
 
 		# Grab the set of available moves for this game
 		self.move_list = self.ale.getMinimalActionSet()
+		print "Number of Moves:", len(self.move_list)
 
 		self.listeners = []
 

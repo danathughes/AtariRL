@@ -155,7 +155,7 @@ class DuelingDeepQNetwork(object):
         mean_advantage = tf.reduce_mean(self.advantage, axis=1)
 #        max_advantage = tf.reduce_max(self.advantage, axis=1)
 
-        self.output = self.value + self.advantage - mean_advantage
+        self.output = self.value + self.advantage - tf.reshape(mean_advantage, (-1,1))
         self.q = self.output
 
       # Set the objective to the L2-norm of the residual
@@ -180,6 +180,8 @@ class DuelingDeepQNetwork(object):
         single_state = True
       else:
         _input = states
+
+#      print _input.shape
 
       Q = self.sess.run(self.output, feed_dict={self.input: _input})
 
