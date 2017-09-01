@@ -10,7 +10,7 @@ class EpsilonAgent:
 	Decorator Agent which implements an epsilon-greedy policy.  Uses a second agent to produce non-random actions
 	"""
 
-	def __init__(self, base_controller, num_actions, counter, initial_exploration=1.0, final_exploration=0.1, final_frame=1000000):
+	def __init__(self, agent, num_actions, counter, initial_exploration=1.0, final_exploration=0.1, final_frame=1000000):
 		"""
 		"""
 
@@ -21,7 +21,7 @@ class EpsilonAgent:
 		self.counter = counter
 		self.final_frame = final_frame
 
-		self.base_controller = base_controller
+		self.base_agent = agent
 		self.num_actions = num_actions
 
 
@@ -30,7 +30,7 @@ class EpsilonAgent:
 		Receive an observation
 		"""
 
-		self.base_controller.observe(state)
+		self.base_agent.observe(state)
 
 
 
@@ -38,13 +38,15 @@ class EpsilonAgent:
 		"""
 		"""
 
-		action, Q = self.base_controller.act()
+		# The base agent may require acting for internal purposes, so allow the agent ot act
+		action, Q = self.base_agent.act()
 
 		if self.counter.count < self.final_frame:
 			self.epsilon = self.eps_init + (self.eps_final - self.eps_init)*(float(self.counter.count)/self.final_frame)
 		else:
 			self.epsilon = self.eps_final
 
+		# Should the agent perform a random action?
 		if np.random.random() < self.epsilon:
 			action = np.random.randint(self.num_actions)
 
@@ -56,4 +58,4 @@ class EpsilonAgent:
 		Learn from the action taken (maybe due to environmental influence, etc), provided reward and next state
 		"""
 
-		self.base_controller.learn(action, reward, is_terminal)
+		self.base_agent.learn(action, reward, is_terminal)

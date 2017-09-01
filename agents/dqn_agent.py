@@ -10,6 +10,7 @@ import scipy.ndimage as ndimage
 
 import tensorflow as tf
 from models.DeepQNetwork import *
+from models.DuelingDeepQNetwork import *
 
 from listeners.tensorboard_monitor import *
 
@@ -54,8 +55,8 @@ class DQN_Agent:
 		self.sess = kwargs.get('tf_session', tf.InteractiveSession())
 
 		# Initialize a Tensorflow session and create two DQNs
-		self.dqn = DeepQNetwork(input_shape, self.dqn_layers, num_actions, self.sess, network_name='dqn')
-		self.target_dqn = DeepQNetwork(input_shape, self.dqn_layers, num_actions, self.sess, network_name='target_dqn', trainable=False)
+		self.dqn = DuelingDeepQNetwork(input_shape, self.dqn_layers, num_actions, self.sess, network_name='dqn')
+		self.target_dqn = DuelingDeepQNetwork(input_shape, self.dqn_layers, num_actions, self.sess, network_name='target_dqn', trainable=False)
 
 		self.update_operation = UpdateOperation(self.dqn, self.target_dqn, self.sess)
 
@@ -173,8 +174,6 @@ class DQN_Agent:
 		
 
 
-
-
 class DoubleDQN_Agent(DQN_Agent):
 	"""
 	Agent which implements a Double DQN to learn a policy
@@ -187,7 +186,7 @@ class DoubleDQN_Agent(DQN_Agent):
 		# The Double DQN agent is almost exactly the same as a DQN agent, so this'll just
 		# subclass a DQN agent and change the appropriate methods
 
-		DQN_Agent.__init__(self, input_shape, hidden_layers, num_actions, replay_memory, counter, kwargs)
+		DQN_Agent.__init__(self, input_shape, hidden_layers, num_actions, replay_memory, counter, **kwargs)
 
 
 	def createDataset(self, size):
