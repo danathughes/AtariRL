@@ -49,7 +49,7 @@ class OpenAIGymEnvironment:
 
 		self.game_screen, reward, self.is_terminal, info = env.step(action)
 
-
+		return reward
 
 
 	def terminal(self):
@@ -57,7 +57,7 @@ class OpenAIGymEnvironment:
 		Return if the state is a terminal state
 		"""
 
-		return self.ale.game_over()
+		return self.is_terminal
 
 
 	def lives(self):
@@ -65,7 +65,7 @@ class OpenAIGymEnvironment:
 		How many lives are left
 		"""
 
-		return self.ale.lives()
+		return self.env.env.ale.lives()
 
 
 	def reset_game(self):
