@@ -4,6 +4,9 @@ import numpy as np
 
 import scipy.ndimage as ndimage
 
+import pygame
+from pygame.locals import *
+
 
 class AtariEnvironment:
 	"""
@@ -29,6 +32,8 @@ class AtariEnvironment:
 		print "Number of Moves:", len(self.move_list)
 
 		self.listeners = []
+
+		self.screen = pygame.display.set_mode((160,210))
 
 
 	def get_state(self):
@@ -79,3 +84,16 @@ class AtariEnvironment:
 		"""
 
 		self.ale.reset_game()
+
+
+	def display(self):
+		"""
+		"""
+
+		game_screen = self.screen_buffer.reshape((210,160,3))
+
+		game_surf = pygame.surfarray.make_surface(game_screen)
+		game_surf = pygame.transform.rotate(game_surf, -90)
+		self.screen.blit(game_surf, (0,0))
+		pygame.display.flip()
+

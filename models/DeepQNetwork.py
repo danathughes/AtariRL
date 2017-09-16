@@ -198,14 +198,14 @@ class DeepQNetwork(object):
 
       # Perform some assertions / checks to make sure that the directory exists...
 
-#      for name, param in self.params.items():
-#         values = np.load(directory + '/' + name + '.npy')
+      for name, param in self.params.items():
+         values = np.load(directory + '/' + name + '.npy')
 
-#         self.sess.run(param.assign(values))
+         self.sess.run(param.assign(values))
 
-      print directory
+#      print path
 
-      self.saver.restore(self.sess, directory + '/dqn_model-4000000' )
+#      self.saver.restore(self.sess, path)
 
 
 

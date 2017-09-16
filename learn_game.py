@@ -146,13 +146,18 @@ class AtariGameInterface:
 		# Reset the game to start a new episode
 		self.environment.reset_game()
 
+		self.environment.display()
+
 		# Perform a certain number of noops
 		for i in range(num_noop):
 			_ = self.environment.act(0)
 
 		while not self.environment.terminal():
 			state = self.environment.get_state()
-			action, Q = self.agent.act(state)
+			self.environment.display()
+
+			self.agent.observe(state)
+			action, Q = self.agent.act()
 
 			for i in range(self.action_repeat):
 				reward = self.environment.act(action)
@@ -165,8 +170,8 @@ sess = tf.InteractiveSession()
 counter = Counter()
 
 replay_memory = ReplayMemory(1000000)
-#dqn_agent = DQN_Agent((84,84,4), NATURE, 4, replay_memory, counter, tf_session=sess)
-dqn_agent = DQN_Agent((84,84,4), DUELING, 4, replay_memory, counter, tf_session=sess)
+dqn_agent = DQN_Agent((84,84,4), NATURE, 4, replay_memory, counter, tf_session=sess)
+#dqn_agent = DQN_Agent((84,84,4), DUELING, 4, replay_memory, counter, tf_session=sess)
 agent = EpsilonAgent(dqn_agent, 4, counter)
 agi = AtariGameInterface('roms/Breakout.bin', agent, counter)
 
@@ -188,6 +193,9 @@ sess.run(tf.global_variables_initializer())
 #dqn_agent.dqn.restore('./checkpoints/dqn/4000000')
 #dqn_agent.update_target_network()
 #replay_memory.load('./checkpoints/replay_memory/4000000')
+
+#dqn_agent.dqn.restore('./old_stuff/old_checkpoints/dqn/1800000//dqn_model-1800000')
+#dqn_agent.update_target_network()
 
 
 def run():

@@ -80,7 +80,7 @@ class ReplayMemory:
 		n = (indices + 1) % max_idx
 		next_state[:,:,:,3] = self.frames[n,:,:].astype(np.float32)# / 255.0
 
-		return state, self.actions[indices], self.rewards[indices], next_state, self.terminal[n]
+		return state, self.actions[indices], self.rewards[indices], next_state, self.terminal[n], indices
 
 
 	def save(self, path):

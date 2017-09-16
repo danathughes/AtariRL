@@ -9,8 +9,8 @@ import os
 import scipy.ndimage as ndimage
 
 import tensorflow as tf
-#from models.DeepQNetwork import *
-from models.DuelingDeepQNetwork import *
+from models.DeepQNetwork import *
+#from models.DuelingDeepQNetwork import *
 
 from listeners.tensorboard_monitor import *
 
@@ -55,8 +55,8 @@ class DQN_Agent:
 		self.sess = kwargs.get('tf_session', tf.InteractiveSession())
 
 		# Initialize a Tensorflow session and create two DQNs
-		self.dqn = DuelingDeepQNetwork(input_shape, self.dqn_layers, num_actions, self.sess, network_name='dqn')
-		self.target_dqn = DuelingDeepQNetwork(input_shape, self.dqn_layers, num_actions, self.sess, network_name='target_dqn', trainable=False)
+		self.dqn = DeepQNetwork(input_shape, self.dqn_layers, num_actions, self.sess, network_name='dqn')
+		self.target_dqn = DeepQNetwork(input_shape, self.dqn_layers, num_actions, self.sess, network_name='target_dqn', trainable=False)
 
 		self.update_operation = UpdateOperation(self.dqn, self.target_dqn, self.sess)
 
@@ -121,7 +121,7 @@ class DQN_Agent:
 		"""
 
 		# Create and populate arrays for the input, target and mask for the DQN
-		states, actions, rewards, next_states, terminals = self.replay_memory.get_samples(32)
+		states, actions, rewards, next_states, terminals, indices = self.replay_memory.get_samples(32)
 
 		# Get what the normal output would be for the DQN
 		targets = self.dqn.get_Qs(states)
@@ -138,7 +138,7 @@ class DQN_Agent:
 
 		target_Q = rewards + Qnext
 
-		return states, targets, actions, target_Q
+		return states, targets, actions, target_Q, indices
 
 
 	def update_target_network(self):
@@ -157,7 +157,7 @@ class DQN_Agent:
 		"""
 
 		# Get the training data
-		inputs, targets, actions, target_Q = self.createDataset(self.minibatch_size)
+		inputs, targets, actions, target_Q, indices = self.createDataset(self.minibatch_size)
 		data = {'input': inputs, 'target': target_Q, 'action': actions}
 
 		# Train the network
