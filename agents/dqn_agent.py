@@ -32,7 +32,7 @@ class DQN_Agent:
 
 		# Need to query the replay memory for training examples
 		self.replay_memory = replay_memory
-		self.replay_start_size = kwargs.get('replay_start_size', 50000)
+		self.replay_start_size = kwargs.get('replay_start_size', 5000)
 
 		# Discount factor, etc.
 		self.discount_factor = kwargs.get('discount_factor', 0.99)
@@ -49,7 +49,7 @@ class DQN_Agent:
 			self.can_train = False
 
 		# Keep track of frames to know when to train, switch networks, etc.
-		self.target_update_frequency = kwargs.get('target_update_frequency', 10000)
+		self.target_update_frequency = kwargs.get('target_update_frequency', 1000)
 
 		# Did the user provide a session?
 		self.sess = kwargs.get('tf_session', tf.InteractiveSession())
@@ -121,7 +121,8 @@ class DQN_Agent:
 		"""
 
 		# Create and populate arrays for the input, target and mask for the DQN
-		states, actions, rewards, next_states, terminals, indices = self.replay_memory.get_samples(32)
+		experiences, indices, weights = self.replay_memory.get_samples(32)
+		states, actions, rewards, next_states, terminals = experiences
 
 		# Get what the normal output would be for the DQN
 		targets = self.dqn.get_Qs(states)
@@ -138,7 +139,11 @@ class DQN_Agent:
 
 		target_Q = rewards + Qnext
 
-		return states, targets, actions, target_Q, indices
+		# Calculate the TD error and inform the memory, for possible update
+		TD_error = target_Q - self.dqn.get_Qs(states)[idx, actions]
+		self.replay_memory.update(indices, TD_error)
+
+		return states, targets, actions, target_Q, indices, weights
 
 
 	def update_target_network(self):
@@ -157,8 +162,8 @@ class DQN_Agent:
 		"""
 
 		# Get the training data
-		inputs, targets, actions, target_Q, indices = self.createDataset(self.minibatch_size)
-		data = {'input': inputs, 'target': target_Q, 'action': actions}
+		inputs, targets, actions, target_Q, indices, weights = self.createDataset(self.minibatch_size)
+		data = {'input': inputs, 'target': target_Q, 'action': actions, 'weights': weights}
 
 		# Train the network
 		loss = self.dqn.train(data)
@@ -194,7 +199,8 @@ class DoubleDQN_Agent(DQN_Agent):
 		"""
 
 		# Create and populate arrays for the input, target and mask for the DQN
-		states, actions, rewards, next_states, terminals = self.replay_memory.get_samples(size)
+		experiences, indices = self.replay_memory.get_samples(size)
+		states, actions, rewards, next_states, terminals = experiences
 
 		# Get what the normal output would be for the DQN
 		targets = self.dqn.get_Qs(states)
@@ -217,4 +223,4 @@ class DoubleDQN_Agent(DQN_Agent):
 
 		target_Q = rewards + Qnext
 
-		return states, targets, actions, target_Q
+		return states, targets, actions, target_Q, indices

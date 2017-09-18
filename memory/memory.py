@@ -48,13 +48,17 @@ class ReplayMemory:
 			self.filled = True
 
 
+	def update(self, indices, TD_error):
+		"""
+		"""
+
+		pass
+
+
 	def get_samples(self, size, history_length=4):
 		"""
 		Return an array of samples
 		"""
-
-		state = np.zeros((size, self.height, self.width, 4), np.float32)
-		next_state = np.zeros((size, self.height, self.width, 4), np.float32)
 
 
 		# Figure out to how big the current array is
@@ -71,6 +75,21 @@ class ReplayMemory:
 		indices = np.random.randint(3, max_idx-1, (size,)) + self._idx
 		indices = indices % max_idx
 
+		experiences = self.pull_experiences(indices, history_length, max_idx)
+
+		return experiences, indices, np.ones((size,))
+
+
+	def pull_experiences(self, indices, history_length, max_idx):
+		"""
+		Get the states, actions, rewards, next_states and terminal at the provided indices
+		"""
+
+		size = len(indices)
+
+		state = np.zeros((size, self.height, self.width, 4), np.float32)
+		next_state = np.zeros((size, self.height, self.width, 4), np.float32)
+
 		# Get the current and next state
 		for i in range(4):
 			# Sample the prior 4 frames
@@ -80,7 +99,7 @@ class ReplayMemory:
 		n = (indices + 1) % max_idx
 		next_state[:,:,:,3] = self.frames[n,:,:].astype(np.float32)# / 255.0
 
-		return state, self.actions[indices], self.rewards[indices], next_state, self.terminal[n], indices
+		return state, self.actions[indices], self.rewards[indices], next_state, self.terminal[n]
 
 
 	def save(self, path):
