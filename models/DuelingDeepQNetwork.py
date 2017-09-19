@@ -64,7 +64,7 @@ class Optimizer(object):
       self.action = tf.placeholder(tf.uint8, [None], name='action')
       self.target_q = tf.placeholder(tf.float32, [None], name='target_Q_value')
 
-      self.weights = tf.placeholoder(tf.float32, [None], name='weights')
+      self.weights = tf.placeholder(tf.float32, [None], name='weights')
 
       action_one_hot = tf.one_hot(self.action, num_actions, 1.0, 0.0)
       action_q = tf.reduce_sum(self.q_values*action_one_hot, reduction_indices=1, name='action_q')

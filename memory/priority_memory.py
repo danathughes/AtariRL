@@ -77,17 +77,13 @@ class PriorityReplayMemory:
 		else:
 			max_idx = self._idx
 
-		# Determine the probability of each sample
-#		self.probability = self.priority ** self.alpha
-#		self.probability /= np.sum(self.probability)
-
 		# Crate a list of valid indices, then sample with the given probability distribution
 		valid_indices = np.arange(3, max_idx - 1) + self._idx
 		valid_indices = valid_indices % max_idx
 
-		probs = self.priority[valid_indices]
-		probs = probs ** self.alpha
-		probs = probs / np.sum(probs)
+		probabilities = self.priority[valid_indices]
+		probabilities = probabilities ** self.alpha
+		probabilities = probabilities / np.sum(probabilities)
 
 
 		indices = np.random.choice(valid_indices, 32, False, probs)
@@ -96,7 +92,7 @@ class PriorityReplayMemory:
 		experiences = self.memory.pull_experiences(indices, history_length, max_idx)
 
 		# Calculate the weights of each experience
-		weights = (size*probs) ** (-self.beta)
+		weights = (size*probabilities) ** (-self.beta)
 
 		return experiences, indices, weights
 

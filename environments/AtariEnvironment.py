@@ -36,6 +36,14 @@ class AtariEnvironment:
 		self.screen = pygame.display.set_mode((160,210))
 
 
+	def num_actions(self):
+		"""
+		How many actions are available to the agent
+		"""
+
+		return len(self.move_list)
+
+
 	def get_state(self):
 		"""
 		Convert current screen to 84x84 np array of luminescence values. 

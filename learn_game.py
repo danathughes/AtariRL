@@ -14,9 +14,7 @@ import os
 
 from models.DeepQNetwork import *
 
-from agents.dqn_agent import DQN_Agent, DoubleDQN_Agent
 from agents.epsilon_agent import EpsilonAgent
-from models.networks import NATURE, NIPS, DUELING
 from memory.memory import ReplayMemory
 from memory.priority_memory import PriorityReplayMemory
 
@@ -28,7 +26,8 @@ from listeners.checkpoint_recorder import *
 from listeners.tensorboard_monitor import *
 
 
-#from replay_memory import *
+import config
+
 
 
 class Counter:
@@ -56,12 +55,12 @@ class AtariGameInterface:
 	"""
 	"""
 
-	def __init__(self, game_filename, agent, counter, **kwargs):
+	def __init__(self, environment, agent, counter, config, **kwargs):
 		"""
 		Load the game and create a display using pygame
 		"""
 
-		self.environment = AtariEnvironment(game_filename)
+		self.environment = environment
 		
 		# Hang on to the provided controller and replay memory
 		self.agent = agent
@@ -170,17 +169,18 @@ class AtariGameInterface:
 sess = tf.InteractiveSession()
 counter = Counter()
 
-replay_memory = ReplayMemory(1000000)
-dqn_agent = DQN_Agent((84,84,4), NATURE, 4, replay_memory, counter, tf_session=sess)
-#dqn_agent = DQN_Agent((84,84,4), DUELING, 4, replay_memory, counter, tf_session=sess)
-agent = EpsilonAgent(dqn_agent, 4, counter)
-agi = AtariGameInterface('roms/Breakout.bin', agent, counter)
+environment = AtariEnvironment(game_filename)
+num_actions = environment.num_actions()
+replay_memory = config.Memory(config.memory_size, config.screen_width, config.screen_height)
+dqn_agent = config.Agent((config.screen_width,config.screen_height,config.history_length), config.network_layers, num_actions, replay_memory, counter, config, tf_session=sess)
+agent = EpsilonAgent(dqn_agent, num_actions, counter)
+agi = AtariGameInterface(environment, agent, counter, config)
 
 # Create a Tensorboard monitor and populate with the desired summaries
 tensorboard_monitor = TensorboardMonitor('./log/breakout/dueling-dqn/', sess, counter)
 tensorboard_monitor.add_scalar_summary('score', 'per_game_summary')
 tensorboard_monitor.add_scalar_summary('training_loss', 'training_summary')
-for i in range(4):
+for i in range(num_actions):
 	tensorboard_monitor.add_histogram_summary('Q%d_training' % i, 'training_summary')
 
 checkpoint_monitor = CheckpointRecorder(dqn_agent.dqn, replay_memory, counter, './checkpoints/breakout/dueling-dqn/', sess)
