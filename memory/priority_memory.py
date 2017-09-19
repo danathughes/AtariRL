@@ -10,7 +10,7 @@ class PriorityReplayMemory:
 	"""
 	"""
 
-	def __init__(self, alpha = 0.6, beta = 0.4, memory_size=1000000, height=84, width=84):
+	def __init__(self, memory_size=1000000, height=84, width=84, alpha = 0.6, beta = 0.4):
 		"""
 		Create a recorder to record the dataset
 		"""
@@ -85,19 +85,10 @@ class PriorityReplayMemory:
 		valid_indices = np.arange(3, max_idx - 1) + self._idx
 		valid_indices = valid_indices % max_idx
 
-		print np.max(self.priority[valid_indices]), np.min(self.priority[valid_indices])
-
-		probs = (self.priority[valid_indices])
-
-		print np.max(probs), np.min(probs)
-
+		probs = self.priority[valid_indices]
 		probs = probs ** self.alpha
-
-		print np.max(probs), np.min(probs)
-
 		probs = probs / np.sum(probs)
 
-		print np.max(probs), np.min(probs)
 
 		indices = np.random.choice(valid_indices, 32, False, probs)
 
