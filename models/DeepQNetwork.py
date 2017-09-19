@@ -64,6 +64,7 @@ class Optimizer(object):
       self.action = tf.placeholder(tf.uint8, [None], name='action')
       self.target_q = tf.placeholder(tf.float32, [None], name='target_Q_value')
 
+      self.weights = tf.placeholder(tf.float32, [None], name='weights')
 
       action_one_hot = tf.one_hot(self.action, num_actions, 1.0, 0.0)
       action_q = tf.reduce_sum(self.q_values*action_one_hot, reduction_indices=1, name='action_q')
@@ -75,7 +76,10 @@ class Optimizer(object):
       self.squared_loss = 0.5*tf.square(delta)
 
       self.huber_loss = tf.where(tf.abs(delta) < 1.0, self.squared_loss, tf.abs(delta) - 0.5)
-      self.loss = tf.reduce_mean(self.huber_loss, name='loss')
+
+      self.weighted_loss = self.weights * self.huber_loss
+
+      self.loss = tf.reduce_mean(self.weighted_loss, name='loss')
 
       # Create the optimization operation
       self.optimizer = tf.train.RMSPropOptimizer(self.learning_rate, momentum=self.momentum, epsilon=self.epsilon)
@@ -166,7 +170,8 @@ class DeepQNetwork(object):
       """
 
       loss = 0.0
-      fd = {self.input: data['input'], self.optimizer.target_q: data['target'], self.optimizer.action: data['action']}
+      fd = {self.input: data['input'], self.optimizer.target_q: data['target'],
+            self.optimizer.action: data['action'], self.optimizer.weights: data['weights']}
 
       if self._trainable:
          _, loss = self.sess.run([self.optimizer.train_step, self.optimizer.loss], feed_dict=fd)

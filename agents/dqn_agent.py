@@ -32,7 +32,7 @@ class DQN_Agent:
 
 		# Need to query the replay memory for training examples
 		self.replay_memory = replay_memory
-		self.replay_start_size = kwargs.get('replay_start_size', 5000)
+		self.replay_start_size = kwargs.get('replay_start_size', 50000)
 
 		# Discount factor, etc.
 		self.discount_factor = kwargs.get('discount_factor', 0.99)
@@ -49,7 +49,7 @@ class DQN_Agent:
 			self.can_train = False
 
 		# Keep track of frames to know when to train, switch networks, etc.
-		self.target_update_frequency = kwargs.get('target_update_frequency', 1000)
+		self.target_update_frequency = kwargs.get('target_update_frequency', 10000)
 
 		# Did the user provide a session?
 		self.sess = kwargs.get('tf_session', tf.InteractiveSession())

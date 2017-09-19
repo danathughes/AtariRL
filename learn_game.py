@@ -170,7 +170,7 @@ class AtariGameInterface:
 sess = tf.InteractiveSession()
 counter = Counter()
 
-replay_memory = PriorityReplayMemory(1000000)
+replay_memory = ReplayMemory(1000000)
 dqn_agent = DQN_Agent((84,84,4), NATURE, 4, replay_memory, counter, tf_session=sess)
 #dqn_agent = DQN_Agent((84,84,4), DUELING, 4, replay_memory, counter, tf_session=sess)
 agent = EpsilonAgent(dqn_agent, 4, counter)
@@ -215,8 +215,8 @@ def run():
 	print
 	print "Done Training.  Playing..."
 
-	for i in range(25):
-		print "  Game #" + str(i), "- Score:", agi.play()
+#	for i in range(25):
+#		print "  Game #" + str(i), "- Score:", agi.play()
 
 if __name__ == '__main__':
 	run()
