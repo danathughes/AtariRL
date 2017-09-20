@@ -10,7 +10,7 @@ from agents.dqn_agent import DQN_Agent, DoubleDQN_Agent
 from agents.epsilon_agent import EpsilonAgent
 
 from memory.memory import ReplayMemory
-from memory.priority_memory import PriorityReplayMemory
+from memory.priority_memory import PriorityReplayMemory, RankedPriorityReplayMemory
 
 from models import networks
 

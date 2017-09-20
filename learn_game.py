@@ -165,6 +165,7 @@ class AtariGameInterface:
 
 		return total_score
 
+game_filename='roms/Breakout.bin'
 
 sess = tf.InteractiveSession()
 counter = Counter()
