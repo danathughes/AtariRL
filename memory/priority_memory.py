@@ -160,7 +160,6 @@ class RankedPriorityReplayMemory:
 		# Update the index to match the memory's index
 		self._idx = self.memory._idx
 		self.filled = self.memory.filled
-		self.memory_size = self.memory.memory_size
 
 
 	def update(self, indices, TD_error):
@@ -192,8 +191,6 @@ class RankedPriorityReplayMemory:
 		rank_priority = 1.0/(index_rank + 1)
 
 		# Calculate the probability of each item in the valid indices
-#		probabilities = rank_priority[valid_indices]
-#		probabilities = probabilities ** self.alpha
 		probabilities = rank_priority ** self.alpha
 		probabilities = probabilities / np.sum(probabilities)
 
