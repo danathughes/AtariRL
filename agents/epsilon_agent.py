@@ -25,6 +25,13 @@ class EpsilonAgent:
 		self.num_actions = num_actions
 
 
+	def start_episode(self):
+		"""
+		"""
+
+		self.base_agent.start_episode()
+
+
 	def observe(self, state):
 		"""
 		Receive an observation

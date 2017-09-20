@@ -26,6 +26,7 @@ class Bootstrapped_DQN_Agent:
 
 		self.num_actions = num_actions
 		self.num_heads = num_heads
+		self.head_number = 0
 
 		# Which frame / step are we on 
 		self.counter = counter
@@ -95,9 +96,13 @@ class Bootstrapped_DQN_Agent:
 		Select an action based on the current state history
 		"""
 
-		# Select an action
-		Q = self.dqn.get_Qs(self.state_history)
-		action = np.argmax(Q)
+		# Figure out the action selected by each head
+		Qs = self.dqn.get_Qs(self.state_history)
+		actions = np.argmax(Qs, axis=1)
+
+		# Select the action of the control head
+		action = actions[self.head_number]
+		Q = Qs[self.head_number]
 
 		return action, Q
 
@@ -136,21 +141,22 @@ class Bootstrapped_DQN_Agent:
 		# Get what the normal output would be for the DQN
 		targets = self.dqn.get_Qs(states)
 
-		target_Q = np.zeros((size,))
+		target_Q = np.zeros((size,self.num_heads))
 
 		# Update the Q value of only the action
-		Qmax = np.max(self.target_dqn.get_Qs(next_states), axis=1)
-		Qnext = (1.0 - terminals.astype(np.float32)) * self.discount_factor * Qmax
+		target_DQN_Qs = self.target_dqn.get_Qs(next_states)
+		Qmax = np.max(self.target_dqn.get_Qs(next_states), axis=2)
+		Qnext = np.reshape((1.0 - terminals.astype(np.float32)), (size,1)) * self.discount_factor * Qmax
 
 		idx = np.arange(size)
 
-		targets[idx,actions] = rewards[idx] + Qnext[idx]
+		targets[idx,:,actions] = np.reshape(rewards, (size,1))[idx] + Qnext[idx]
 
-		target_Q = rewards + Qnext
+		target_Q = np.reshape(rewards, (size,1)) + Qnext
 
 		# Calculate the TD error and inform the memory, for possible update
-		TD_error = target_Q - self.dqn.get_Qs(states)[idx, actions]
-		self.replay_memory.update(indices, TD_error)
+		#TD_error = target_Q - self.dqn.get_Qs(states)[idx, :, actions]
+		#self.replay_memory.update(indices, TD_error)
 
 		return states, targets, actions, target_Q, weights, masks
 
@@ -171,12 +177,12 @@ class Bootstrapped_DQN_Agent:
 		"""
 
 		# Get the training data
-		inputs, targets, actions, target_Q, weights = self.createDataset(self.minibatch_size)
-		data = {'input': inputs, 'target': target_Q, 'action': actions, 'weights': weights}
+		inputs, targets, actions, target_Q, weights, masks = self.createDataset(self.minibatch_size)
+		data = {'input': inputs, 'target': target_Q, 'action': actions, 'weights': weights, 'masks': masks}
 
 		# Train the network
 		loss = self.dqn.train(data)
-		Qs = self.dqn.get_Qs(inputs)
+		Qs = self.dqn.get_Qs(inputs)[self.head_number]
 
 		# Summarize the Q values and training loss
 		training_data = {'training_loss': loss}

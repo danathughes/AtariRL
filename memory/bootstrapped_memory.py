@@ -58,7 +58,7 @@ class BootstrappedReplayMemory:
 
 		experiences, indices, weights = self.memory.get_samples(size, history_length)
 
-		return experiences, indices, weights, self.masks[indices]
+		return experiences, indices, weights
 
 
 	def get_masks(self, indices):
