@@ -72,7 +72,7 @@ class ReplayMemory:
 		# so enough history is available to fill up the state.
 		# Also note that the indices should be shifted by the current index, and modulo'd.  This
 		# makes sure that the valid range of indices are mapped propertly to the array
-		indices = np.random.randint(3, max_idx-1, (size,)) + self._idx
+		indices = np.random.randint(history_length-1, max_idx-1, (size,)) + self._idx
 		indices = indices % max_idx
 
 		experiences = self.pull_experiences(indices, history_length, max_idx)
@@ -87,17 +87,17 @@ class ReplayMemory:
 
 		size = len(indices)
 
-		state = np.zeros((size, self.height, self.width, 4), np.float32)
-		next_state = np.zeros((size, self.height, self.width, 4), np.float32)
+		state = np.zeros((size, self.height, self.width, history_length), np.float32)
+		next_state = np.zeros((size, self.height, self.width, history_length), np.float32)
 
 		# Get the current and next state
-		for i in range(4):
-			# Sample the prior 4 frames
-			n = (indices - 3 + i) % max_idx
+		for i in range(history_length):
+			# Sample the prior history frames
+			n = (indices - history_length - 1 + i) % max_idx
 			state[:,:,:,i] = self.frames[n,:,:].astype(np.float32)# / 255.0
-		next_state[:,:,:,0:3] = state[:,:,:,1:4]
+		next_state[:,:,:,0:history_length-1] = state[:,:,:,1:history_length]
 		n = (indices + 1) % max_idx
-		next_state[:,:,:,3] = self.frames[n,:,:].astype(np.float32)# / 255.0
+		next_state[:,:,:,history_length-1] = self.frames[n,:,:].astype(np.float32)# / 255.0
 
 		return state, self.actions[indices], self.rewards[indices], next_state, self.terminal[n]
 

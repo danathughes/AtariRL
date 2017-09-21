@@ -73,6 +73,13 @@ class DQN_Agent:
 		self.listeners.append(listener)
 
 
+	def start_episode(self):
+		"""
+		"""
+
+		pass
+
+
 	def observe(self, state):
 		"""
 		Receive an observation

@@ -6,11 +6,11 @@ import cPickle as pickle
 import scipy.ndimage as ndimage
 from memory import ReplayMemory
 
-class PriorityReplayMemory:
+class BootstrappedReplayMemory:
 	"""
 	"""
 
-	def __init__(self, memory_size=1000000, base_memory, num_Q_functions):
+	def __init__(self, memory_size, base_memory, num_Q_functions):
 		"""
 		Create a recorder to record the dataset
 		"""
@@ -25,7 +25,7 @@ class PriorityReplayMemory:
 		self.memory = base_memory
 
 		# Mask for which Q function(s) should learn from this 
-		self.masks = np.zeros((memory_size,num_Q_functions))
+		self.masks = np.zeros((memory_size, num_Q_functions))
 
 
 	def record(self, frame, action, reward, is_terminal):
@@ -34,6 +34,13 @@ class PriorityReplayMemory:
 		"""
 
 		self.memory.record(frame, action, reward, is_terminal)
+
+		# Generate a mask
+		self.masks[self._idx] = np.random.binomial(1, 0.5, (10,))
+
+		# Syncronize the indices, etc.
+		self._idx = self.memory._idx
+		self.filled = self.memory.filled
 
 
 	def update(self, indices, TD_error):
@@ -49,7 +56,17 @@ class PriorityReplayMemory:
 		Return an array of samples
 		"""
 
-		return self.memory.get_samples(size, history_length)
+		experiences, indices, weights = self.memory.get_samples(size, history_length)
+
+		return experiences, indices, weights
+
+
+	def get_masks(self, indices):
+		"""
+		Return the masks recorded at the given indices
+		"""
+
+		return self.masks[indices]
 
 
 	def save(self, path):

@@ -14,9 +14,12 @@ import os
 
 from models.DeepQNetwork import *
 
+from agents.bootstrapped_dqn_agent import Bootstrapped_DQN_Agent
+
 from agents.epsilon_agent import EpsilonAgent
 from memory.memory import ReplayMemory
 from memory.priority_memory import PriorityReplayMemory
+from memory.bootstrapped_memory import BootstrappedReplayMemory
 
 from environments.AtariEnvironment import AtariEnvironment
 
@@ -89,8 +92,9 @@ class AtariGameInterface:
 		Allow for controller to learn while playing the game
 		"""
 
-		# Reset the game to start a new episode
+		# Reset the game to start a new episode, and let the agent know
 		self.environment.reset_game()
+		self.agent.start_episode()
 
 		num_lives = self.environment.lives()	
 
@@ -165,14 +169,16 @@ class AtariGameInterface:
 
 		return total_score
 
+game_filename='roms/Breakout.bin'
 
 sess = tf.InteractiveSession()
 counter = Counter()
 
 environment = AtariEnvironment(game_filename)
 num_actions = environment.num_actions()
-replay_memory = config.Memory(config.memory_size, config.screen_width, config.screen_height)
-dqn_agent = config.Agent((config.screen_width,config.screen_height,config.history_length), config.network_layers, num_actions, replay_memory, counter, config, tf_session=sess)
+base_memory = ReplayMemory(config.memory_size, config.screen_width, config.screen_height)
+replay_memory = BootstrappedReplayMemory(config.memory_size, base_memory, 10)
+dqn_agent = Bootstrapped_DQN_Agent((config.screen_width,config.screen_height,config.history_length), config.network_layers[:-2], config.network_layers[-2:], num_actions, 10, replay_memory, counter, config, tf_session=sess)
 agent = EpsilonAgent(dqn_agent, num_actions, counter)
 agi = AtariGameInterface(environment, agent, counter, config)
 
