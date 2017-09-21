@@ -33,7 +33,7 @@ class Bootstrapped_DQN_Agent:
 
 		# Need to query the replay memory for training examples
 		self.replay_memory = replay_memory
-		self.replay_start_size = kwargs.get('replay_start_size', 5000)
+		self.replay_start_size = kwargs.get('replay_start_size', 50000)
 
 		# Discount factor, etc.
 		self.discount_factor = kwargs.get('discount_factor', 0.99)
@@ -50,7 +50,7 @@ class Bootstrapped_DQN_Agent:
 			self.can_train = False
 
 		# Keep track of frames to know when to train, switch networks, etc.
-		self.target_update_frequency = kwargs.get('target_update_frequency', 1000)
+		self.target_update_frequency = kwargs.get('target_update_frequency', 10000)
 
 		# Did the user provide a session?
 		self.sess = kwargs.get('tf_session', tf.InteractiveSession())
@@ -134,25 +134,26 @@ class Bootstrapped_DQN_Agent:
 		"""
 
 		# Create and populate arrays for the input, target and mask for the DQN
-		experiences, indices, weights = self.replay_memory.get_samples(32)
+		experiences, indices, weights = self.replay_memory.get_samples(size)
 		states, actions, rewards, next_states, terminals = experiences
 		masks = self.replay_memory.get_masks(indices)
+
+		# The rewards and terminals need to be reshaped to work with multiple heads
+		rewards = np.reshape(rewards, (size,1))
+		terminals = np.reshape(terminals, (size,1))
 
 		# Get what the normal output would be for the DQN
 		targets = self.dqn.get_Qs(states)
 
-		target_Q = np.zeros((size,self.num_heads))
-
 		# Update the Q value of only the action
-		target_DQN_Qs = self.target_dqn.get_Qs(next_states)
 		Qmax = np.max(self.target_dqn.get_Qs(next_states), axis=2)
-		Qnext = np.reshape((1.0 - terminals.astype(np.float32)), (size,1)) * self.discount_factor * Qmax
+		Qnext = (1.0 - terminals.astype(np.float32)) * self.discount_factor * Qmax
 
 		idx = np.arange(size)
 
-		targets[idx,:,actions] = np.reshape(rewards, (size,1))[idx] + Qnext[idx]
+		targets[idx,:,actions] = rewards[idx] + Qnext[idx]
 
-		target_Q = np.reshape(rewards, (size,1)) + Qnext
+		target_Q = rewards + Qnext
 
 		# Calculate the TD error and inform the memory, for possible update
 		#TD_error = target_Q - self.dqn.get_Qs(states)[idx, :, actions]

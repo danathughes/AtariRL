@@ -62,18 +62,16 @@ class Optimizer(object):
       self.q_values = dqn_output
 
       self.action = tf.placeholder(tf.uint8, (None,), name='action')
-      self.target_q = tf.placeholder(tf.float32, (None,), name='target_Q_value')
+      self.target_q = tf.placeholder(tf.float32, (None, num_heads), name='target_Q_value')
 
       self.weights = tf.placeholder(tf.float32, (None,), name='weights')
       self.masks = tf.placeholder(tf.float32, (None, num_heads), name='masks')
-
-      targets = tf.reshape(self.target_q, (-1,1))
 
       action_one_hot = tf.one_hot(self.action, num_actions, 1.0, 0.0)
       action_one_hot = tf.reshape(action_one_hot, (-1,1,num_actions))
       action_qs = tf.reduce_sum(self.q_values*action_one_hot, reduction_indices=2, name='action_q')
 
-      deltas = targets - action_qs
+      deltas = self.target_q - action_qs
       masked_deltas = self.masks * deltas
 
       # Create the loss function (squared difference)
