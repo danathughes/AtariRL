@@ -5,62 +5,9 @@
 
 import tensorflow as tf
 import numpy as np
-#from parts import *
 import os
 
-    
-class Optimizer(object):
-  """
-  Optimizer for the DQN.  Somewhat pilfered from the devsisters implementation...
-  """
-
-  def __init__(self, dqn_output, num_actions, num_heads, sess, **kwargs):
-    """
-    """
-
-    self._name = kwargs.get('name', 'optimizer')
-
-    # Discount factor, learning rate, momentum, etc.
-    self.learning_rate = kwargs.get('learning_rate', 0.00025)
-    self.momentum = kwargs.get('momentum', 0.0)
-    self.epsilon = kwargs.get('epsilon', 1e-6)
-    self.decay = kwargs.get('decay', 0.99)
-
-    # Alternative has RMS Params as: Learning Rate = 0.00025, Decay = 0.99, Momentum = 0.0, Epsilon=1e-6
-
-    with tf.variable_scope(self._name):
-      # Input to the optimizer is the DQN output, the action performed and the Q value of the target DQN
-      self.q_values = dqn_output
-
-      self.action = tf.placeholder(tf.uint8, (None,), name='action')
-      self.target_q = tf.placeholder(tf.float32, (None, num_heads), name='target_Q_value')
-
-      self.weights = tf.placeholder(tf.float32, (None,), name='weights')
-      self.masks = tf.placeholder(tf.float32, (None, num_heads), name='masks')
-
-      action_one_hot = tf.one_hot(self.action, num_actions, 1.0, 0.0)
-      action_one_hot = tf.reshape(action_one_hot, (-1,1,num_actions))
-      action_qs = tf.reduce_sum(self.q_values*action_one_hot, reduction_indices=2, name='action_q')
-
-      deltas = self.target_q - action_qs
-      masked_deltas = self.masks * deltas
-
-      # Create the loss function (squared difference)
-      self.squared_loss = 0.5*tf.square(masked_deltas)
-
-      self.huber_loss = tf.where(tf.abs(masked_deltas) < 1.0, self.squared_loss, tf.abs(masked_deltas) - 0.5)
-
-      self.weighted_loss = tf.reshape(self.weights, (-1,1)) * self.huber_loss
-
-      self.loss = tf.reduce_mean(self.weighted_loss, name='loss')
-
-      # Create the optimization operation
-      self.optimizer = tf.train.RMSPropOptimizer(self.learning_rate, momentum=self.momentum, epsilon=self.epsilon)
-
-      # Need to clip gradients between -1 and 1 to stabilize learning
-      grads_and_vars = self.optimizer.compute_gradients(self.loss)
-      capped_grads_and_vars = [(tf.clip_by_value(grad, -1.0, 1.0), var) if grad is not None else (None, var) for grad, var in grads_and_vars]
-      self.train_step = self.optimizer.apply_gradients(capped_grads_and_vars)
+from models.bootstrapped.optimizer import ClippedRMSPropOptimizer
 
 
 class BootstrappedDeepQNetwork(object):
@@ -122,7 +69,7 @@ class BootstrappedDeepQNetwork(object):
         
       # Set the objective to the L2-norm of the residual
       if self._trainable:
-        self.optimizer = Optimizer(self.Q, self.num_actions, self.num_heads, self.sess)
+        self.optimizer = ClippedRMSPropOptimizer(self)
       else:
         self.optimizer = None
 
