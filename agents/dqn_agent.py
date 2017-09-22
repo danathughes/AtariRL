@@ -19,13 +19,14 @@ class DQN_Agent:
 	Agent which implements a DQN to learn a policy
 	"""
 
-	def __init__(self, input_shape, num_actions, network_builder, replay_memory, counter, config, **kwargs):
+	def __init__(self, frame_shape, num_actions, history_size, network_builder, replay_memory, counter, **kwargs):
 
 		"""
 		action_update_rate - number of frames to repeat an action
 		"""
 
 		self.num_actions = num_actions
+		self.history_size = history_size
 
 		# Which frame / step are we on 
 		self.counter = counter
@@ -55,15 +56,14 @@ class DQN_Agent:
 		self.sess = kwargs.get('tf_session', tf.InteractiveSession())
 
 		# Initialize a Tensorflow session and create two DQNs
-#		self.dqn = config.Network(input_shape, self.dqn_layers, num_actions, self.sess, network_name='dqn')
-#		self.target_dqn = config.Network(input_shape, self.dqn_layers, num_actions, self.sess, network_name='target_dqn', trainable=False)
+		input_shape = frame_shape + (history_size,)
 		self.dqn = network_builder(input_shape, num_actions, self.sess, network_name='dqn')
 		self.target_dqn = network_builder(input_shape, num_actions, self.sess, network_name='target_dqn', trainable=False)
 
 		self.update_operation = UpdateOperation(self.dqn, self.target_dqn, self.sess)
 
 		# Maintain a history of the previous states for use as input
-		self.state_history = np.zeros((84,84,4))
+		self.state_history = np.zeros(input_shape)
 
 		self.listeners = []
 
@@ -193,14 +193,14 @@ class DoubleDQN_Agent(DQN_Agent):
 	Agent which implements a Double DQN to learn a policy
 	"""
 
-	def __init__(self, input_shape, hidden_layers, num_actions, replay_memory, counter, **kwargs):
+	def __init__(self, input_shape, num_actions, history_size, network_builder, replay_memory, counter, **kwargs):
 		"""
 		"""
 
 		# The Double DQN agent is almost exactly the same as a DQN agent, so this'll just
 		# subclass a DQN agent and change the appropriate methods
 
-		DQN_Agent.__init__(self, input_shape, hidden_layers, num_actions, replay_memory, counter, **kwargs)
+		DQN_Agent.__init__(self, frame_shape, num_actions, history_size, network_builder, replay_memory, counter, **kwargs)
 
 
 	def createDataset(self, size):

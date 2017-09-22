@@ -9,16 +9,15 @@ class ReplayMemory:
 	"""
 	"""
 
-	def __init__(self, memory_size=1000000, height=84, width=84):
+	def __init__(self, memory_size=1000000, frame_size=(84,84)):
 		"""
 		Create a recorder to record the dataset
 		"""
 
-		self.width = width
-		self.height = height
+		self.width, self.height = frame_size
 
 		# Buffers to store the data
-		self.frames = np.ones((memory_size, height, width), np.uint8)
+		self.frames = np.ones((memory_size, self.width, self.height), np.uint8)
 		self.actions = np.ones((memory_size,), np.uint8)
 		self.rewards = np.ones((memory_size,))
 		self.terminal = np.ones((memory_size,), np.bool)
