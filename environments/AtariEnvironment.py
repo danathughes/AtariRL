@@ -13,7 +13,7 @@ class AtariEnvironment:
 	Environment for playing Atari games using ALE Interface
 	"""
 
-	def __init__(self, game_filename, **kwargs):
+	def __init__(self, game_path, **kwargs):
 		"""
 		Create an environment with the provided game
 		"""
@@ -25,7 +25,7 @@ class AtariEnvironment:
 		self.ale = ALEInterface()
 		self.ale.setBool('color_averaging', True)
 		self.ale.setFloat('repeat_action_probability', 0.0)
-		self.ale.loadROM(game_filename)
+		self.ale.loadROM(game_path)
 
 		# Grab the set of available moves for this game
 		self.move_list = self.ale.getMinimalActionSet()

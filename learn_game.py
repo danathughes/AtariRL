@@ -29,7 +29,6 @@ from memory.bootstrapped_memory import BootstrappedReplayMemory
 # Environment
 from environments.AtariEnvironment import AtariEnvironment
 
-
 # Listeners to perform various bookkeeping tasks
 from listeners.checkpoint_recorder import *
 from listeners.tensorboard_monitor import *

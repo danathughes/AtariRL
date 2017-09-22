@@ -10,13 +10,13 @@ class OpenAIGymEnvironment:
 	Environment for playing Atari games using OpenAI's gym
 	"""
 
-	def __init__(self, game_ame, **kwargs):
+	def __init__(self, game_path, **kwargs):
 		"""
 		Create an environment with the provided game
 		"""
 
 		# Create the gym environment with the provided frame
-		self.env = gym.make(game_name)
+		self.env = gym.make(game_path)
 
 		# Reset the game and grab the current screen, just so it's available, 
 		# and set the game to not terminal
