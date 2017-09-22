@@ -7,6 +7,9 @@ import tensorflow as tf
 from utils.config_loader import load as load_config
 from AtariTrainer import AtariTrainer
 
+# Listeners to perform various bookkeeping tasks
+from listeners.checkpoint_recorder import *
+from listeners.tensorboard_monitor import *
 
 sess = tf.InteractiveSession()
 
