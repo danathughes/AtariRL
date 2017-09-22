@@ -25,7 +25,7 @@ class DuelingDeepQNetwork(object):
       # List of weights and biases
       self.params = {}
 
-      self._network_name = kwargs.get('network_name', 'DQN')
+      network_name = kwargs.get('network_name', 'DQN')
 
       # Input and target placeholders
       self._trainable = kwargs.get('trainable', True)
@@ -35,7 +35,7 @@ class DuelingDeepQNetwork(object):
       self.frame_shape = tuple(frame_shape)
       self.num_actions = num_actions
 
-      with tf.variable_scope(self._network_name):
+      with tf.variable_scope(network_name):
         self.input = tf.placeholder(tf.float32, shape=(None,) + tuple(frame_shape), name='input')
 
         # Build up the hidden layers for the network
@@ -62,7 +62,7 @@ class DuelingDeepQNetwork(object):
           if b:
             self.params['b_' + layer.name] = b
 
-        self.value = current_layer
+        value = current_layer
 
         # Build up the advantage stream
         current_layer = stream_input
@@ -73,19 +73,18 @@ class DuelingDeepQNetwork(object):
           if b:
             self.params['b_' + layer.name] = b
 
-        self.advantage = current_layer
+        advantage = current_layer
 
         # Combine advantage and value function
-        mean_advantage = tf.reduce_mean(self.advantage, axis=1)
+        mean_advantage = tf.reduce_mean(advantage, axis=1)
 
-        self.Q = self.value + self.advantage - tf.reshape(mean_advantage, (-1,1))
+        self.Q = value + advantage - tf.reshape(mean_advantage, (-1,1))
         
 
       # Set the objective to the L2-norm of the residual
       if self._trainable:
         self.optimizer = ClippedRMSPropOptimizer(self)
       else:
-        self._objective = None
         self.optimizer = None
 
       self.saver = tf.train.Saver()

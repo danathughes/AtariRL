@@ -78,7 +78,7 @@ class BootstrappedDeepQNetwork(object):
       # List of weights and biases
       self.params = {}
 
-      self._network_name = kwargs.get('network_name', 'DQN')
+      network_name = kwargs.get('network_name', 'DQN')
 
       # Input and target placeholders
       self._trainable = kwargs.get('trainable', True)
@@ -89,7 +89,7 @@ class BootstrappedDeepQNetwork(object):
       self.num_actions = num_actions
       self.num_heads = num_heads
 
-      with tf.variable_scope(self._network_name):
+      with tf.variable_scope(network_name):
         self.input = tf.placeholder(tf.float32, shape=(None,) + tuple(frame_shape), name='input')
 
         # Build up the hidden layers for the network
@@ -104,11 +104,10 @@ class BootstrappedDeepQNetwork(object):
           if b:
             self.params['b_'+layer.name] = b
 
-
         heads = [current_layer] * num_heads
         # Build up each head layer
         for i in range(num_heads):
-          with tf.variable_scope(self._network_name + '_head%d'%i):
+          with tf.variable_scope(network_name + '_head%d'%i):
             for layer in head_layers:
               current_layer, w, b = layer.build(heads[i], trainable=self._trainable)
               heads[i] = current_layer
@@ -119,14 +118,12 @@ class BootstrappedDeepQNetwork(object):
 
 
         # Merge the outputs to a single tensor
-        self.output = tf.stack(heads, axis=1)
-        self.q = self.output
-
+        self.Q = tf.stack(heads, axis=1)
+        
       # Set the objective to the L2-norm of the residual
       if self._trainable:
-        self.optimizer = Optimizer(self.output, self.num_actions, self.num_heads, self.sess)
+        self.optimizer = Optimizer(self.Q, self.num_actions, self.num_heads, self.sess)
       else:
-        self._objective = None
         self.optimizer = None
 
       self.saver = tf.train.Saver()
@@ -145,7 +142,7 @@ class BootstrappedDeepQNetwork(object):
       else:
         _input = states
 
-      Q = self.sess.run(self.output, feed_dict={self.input: _input})
+      Q = self.sess.run(self.Q, feed_dict={self.input: _input})
 
       if single_state:
         Q = np.reshape(Q, (self.num_heads, self.num_actions))

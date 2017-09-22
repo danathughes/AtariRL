@@ -25,7 +25,7 @@ class DeepQNetwork(object):
       # List of weights and biases
       self.params = {}
 
-      self._network_name = kwargs.get('network_name', 'DQN')
+      network_name = kwargs.get('network_name', 'DQN')
 
       # Input and target placeholders
       self._trainable = kwargs.get('trainable', True)
@@ -35,7 +35,7 @@ class DeepQNetwork(object):
       self.frame_shape = tuple(frame_shape)
       self.num_actions = num_actions
 
-      with tf.variable_scope(self._network_name):
+      with tf.variable_scope(network_name):
         self.input = tf.placeholder(tf.float32, shape=(None,) + tuple(frame_shape), name='input')
 
         # Build up the hidden layers for the network
@@ -55,7 +55,6 @@ class DeepQNetwork(object):
       if self._trainable:
         self.optimizer = ClippedRMSPropOptimizer(self)
       else:
-        self._objective = None
         self.optimizer = None
 
       self.saver = tf.train.Saver()
