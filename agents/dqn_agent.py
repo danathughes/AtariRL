@@ -7,7 +7,7 @@ import tensorflow as tf
 import numpy as np
 import os
 
-from models.DeepQNetwork import UpdateOperation
+from models import operations
 
 class DQN_Agent:
 	"""
@@ -55,7 +55,7 @@ class DQN_Agent:
 		self.dqn = network_builder(input_shape, num_actions, self.sess, network_name='dqn')
 		self.target_dqn = network_builder(input_shape, num_actions, self.sess, network_name='target_dqn', trainable=False)
 
-		self.update_operation = UpdateOperation(self.dqn, self.target_dqn, self.sess)
+		self.update_operation = operations.Update(self.dqn, self.target_dqn, self.sess)
 
 		# Maintain a history of the previous states for use as input
 		self.state_history = np.zeros(input_shape)

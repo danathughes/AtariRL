@@ -5,89 +5,9 @@
 
 import tensorflow as tf
 import numpy as np
-#from parts import *
 import os
 
-class UpdateOperation(object):
-  """
-  Operations to perform an update step between a DQN and a target DQN
-  """
-
-  def __init__(self, dqn, target_dqn, sess):
-    """
-    """
-
-    self.dqn = dqn
-    self.target_dqn = target_dqn
-    self.sess = sess
-
-    # Create an operator to update the target weights from the current DQN
-    self.update_operations = []
-
-    with tf.variable_scope('update_operation'):
-      for name in self.dqn.params:
-        op = self.target_dqn.params[name].assign(self.dqn.params[name].value())
-        self.update_operations.append(op)
-
-
-  def run(self):
-    """
-    Perform the update operations
-    """
-
-    self.sess.run(self.update_operations)
-
-    
-class Optimizer(object):
-  """
-  Optimizer for the DQN.  Somewhat pilfered from the devsisters implementation...
-  """
-
-  def __init__(self, dqn_output, num_actions, sess, **kwargs):
-    """
-    """
-
-    self._name = kwargs.get('name', 'optimizer')
-
-    # Discount factor, learning rate, momentum, etc.
-    self.learning_rate = kwargs.get('learning_rate', 0.00025)
-    self.momentum = kwargs.get('momentum', 0.0)
-    self.epsilon = kwargs.get('epsilon', 1e-6)
-    self.decay = kwargs.get('decay', 0.99)
-
-    # Alternative has RMS Params as: Learning Rate = 0.00025, Decay = 0.99, Momentum = 0.0, Epsilon=1e-6
-
-    with tf.variable_scope(self._name):
-      # Input to the optimizer is the DQN output, the action performed and the Q value of the target DQN
-      self.q_values = dqn_output
-
-      self.action = tf.placeholder(tf.uint8, [None], name='action')
-      self.target_q = tf.placeholder(tf.float32, [None], name='target_Q_value')
-
-      self.weights = tf.placeholder(tf.float32, [None], name='weights')
-
-      action_one_hot = tf.one_hot(self.action, num_actions, 1.0, 0.0)
-      action_q = tf.reduce_sum(self.q_values*action_one_hot, reduction_indices=1, name='action_q')
-
-      delta = self.target_q - action_q
-      self.delta = delta
-
-      # Create the loss function (squared difference)
-      self.squared_loss = 0.5*tf.square(delta)
-
-      self.huber_loss = tf.where(tf.abs(delta) < 1.0, self.squared_loss, tf.abs(delta) - 0.5)
-
-      self.weighted_loss = self.weights * self.huber_loss
-
-      self.loss = tf.reduce_mean(self.weighted_loss, name='loss')
-
-      # Create the optimization operation
-      self.optimizer = tf.train.RMSPropOptimizer(self.learning_rate, momentum=self.momentum, epsilon=self.epsilon)
-
-      # Need to clip gradients between -1 and 1 to stabilize learning
-      grads_and_vars = self.optimizer.compute_gradients(self.loss)
-      capped_grads_and_vars = [(tf.clip_by_value(grad, -1.0, 1.0), var) if grad is not None else (None, var) for grad, var in grads_and_vars]
-      self.train_step = self.optimizer.apply_gradients(capped_grads_and_vars)
+from models.optimizers import ClippedRMSPropOptimizer
 
 
 class DeepQNetwork(object):
@@ -129,13 +49,11 @@ class DeepQNetwork(object):
           if b:
             self.params['b_'+layer.name] = b
 
-
-        self.output = current_layer
-        self.q = self.output
+        self.Q = current_layer
 
       # Set the objective to the L2-norm of the residual
       if self._trainable:
-        self.optimizer = Optimizer(self.output, self.num_actions, self.sess)
+        self.optimizer = ClippedRMSPropOptimizer(self)
       else:
         self._objective = None
         self.optimizer = None
@@ -156,7 +74,7 @@ class DeepQNetwork(object):
       else:
         _input = states
 
-      Q = self.sess.run(self.output, feed_dict={self.input: _input})
+      Q = self.sess.run(self.Q, feed_dict={self.input: _input})
 
       if single_state:
         Q = np.reshape(Q, (self.num_actions,))
@@ -170,7 +88,7 @@ class DeepQNetwork(object):
       """
 
       loss = 0.0
-      fd = {self.input: data['input'], self.optimizer.target_q: data['target'],
+      fd = {self.input: data['input'], self.optimizer.target_Q: data['target'],
             self.optimizer.action: data['action'], self.optimizer.weights: data['weights']}
 
       if self._trainable:
