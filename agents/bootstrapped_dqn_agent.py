@@ -19,7 +19,7 @@ class Bootstrapped_DQN_Agent:
 	Agent which implements a Bootstrapped DQN to learn a policy
 	"""
 
-	def __init__(self, input_shape, shared_layers, head_layers, num_actions, num_heads, replay_memory, counter, config, **kwargs):
+	def __init__(self, input_shape, num_actions, network_builder, replay_memory, num_heads, counter, config, **kwargs):
 		"""
 		action_update_rate - number of frames to repeat an action
 		"""
@@ -56,8 +56,8 @@ class Bootstrapped_DQN_Agent:
 		self.sess = kwargs.get('tf_session', tf.InteractiveSession())
 
 		# Initialize a Tensorflow session and create two DQNs
-		self.dqn = BootstrappedDeepQNetwork(input_shape, shared_layers, head_layers, num_actions, self.num_heads, self.sess, network_name='dqn')
-		self.target_dqn = BootstrappedDeepQNetwork(input_shape, shared_layers, head_layers, num_actions, self.num_heads, self.sess, network_name='target_dqn', trainable=False)
+		self.dqn = network_builder(input_shape, num_actions, self.sess, network_name='dqn')
+		self.target_dqn = network_builder(input_shape, num_actions, self.sess, network_name='target_dqn', trainable=False)
 
 		self.update_operation = UpdateOperation(self.dqn, self.target_dqn, self.sess)
 
