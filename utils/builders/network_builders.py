@@ -1,6 +1,6 @@
 import models.DeepQNetwork as DQN
 import models.DuelingDeepQNetwork as DDQN
-import models.BootstrappedDeepQNetwork as BDQN
+#import models.BootstrappedDeepQNetwork as BDQN
 
 from models.parts import FullConnection
 

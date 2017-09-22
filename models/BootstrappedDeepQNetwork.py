@@ -7,7 +7,7 @@ import tensorflow as tf
 import numpy as np
 import os
 
-from models.bootstrapped.optimizer import ClippedRMSPropOptimizer
+from models.optimizer import ClippedRMSPropOptimizer
 
 
 class BootstrappedDeepQNetwork(object):

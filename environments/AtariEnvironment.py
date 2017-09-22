@@ -18,6 +18,10 @@ class AtariEnvironment:
 		Create an environment with the provided game
 		"""
 
+		# Optional parameters
+		self.screen_size = kwargs.get('screen_size', (84,84))
+		self.random_seed = kwargs.get('seed', 123)
+
 		# Buffer for grabbing the screen from ALE
 		self.screen_buffer = np.zeros((100800,), np.uint8)
 
@@ -25,10 +29,8 @@ class AtariEnvironment:
 		self.ale = ALEInterface()
 		self.ale.setBool('color_averaging', True)
 		self.ale.setFloat('repeat_action_probability', 0.0)
+		self.ale.setInt('random_seed', self.random_seed)
 		self.ale.loadROM(game_path)
-
-		# How big is the screen
-		self.screen_size = kwargs.get('screen_size', (84,84))
 
 		# Grab the set of available moves for this game
 		self.move_list = self.ale.getMinimalActionSet()
@@ -37,7 +39,8 @@ class AtariEnvironment:
 
 		self.listeners = []
 
-		self.screen = pygame.display.set_mode((160,210))
+		self.screen = None
+#		self.screen = pygame.display.set_mode((160,210))
 
 
 	def get_state(self):
@@ -50,7 +53,7 @@ class AtariEnvironment:
 		# Reshape the screen buffer to an appropriate shape
 		game_screen = self.screen_buffer.reshape((210,160,3))
 
-		# Convert to luminosity
+		# Convert to luminosity and scale to the desired screen size
 		gray_screen = np.dot(game_screen, np.array([0.299, 0.587, 0.114])).astype(np.uint8)
 		gray_screen = ndimage.zoom(gray_screen, (0.4, 0.525))
 
