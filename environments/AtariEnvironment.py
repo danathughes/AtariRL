@@ -27,21 +27,17 @@ class AtariEnvironment:
 		self.ale.setFloat('repeat_action_probability', 0.0)
 		self.ale.loadROM(game_path)
 
+		# How big is the screen
+		self.screen_size = kwargs.get('screen_size', (84,84))
+
 		# Grab the set of available moves for this game
 		self.move_list = self.ale.getMinimalActionSet()
-		print "Number of Moves:", len(self.move_list)
+		self.num_actions = len(self.move_list)
+		print "Number of Actions:", self.num_actions
 
 		self.listeners = []
 
 		self.screen = pygame.display.set_mode((160,210))
-
-
-	def num_actions(self):
-		"""
-		How many actions are available to the agent
-		"""
-
-		return len(self.move_list)
 
 
 	def get_state(self):

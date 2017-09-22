@@ -23,9 +23,13 @@ class OpenAIGymEnvironment:
 		self.game_screen = self.env.reset()
 		self.is_terminal = False
 
+		# How big is the screen
+		self.screen_size = kwargs.get('screen_size', (84,84))
+
 		# Grab the set of available moves for this game
 		self.move_list = range(env.action_space.n)
-		print "Number of Moves:", len(self.move_list)
+		self.num_actions = len(self.move_list)
+		print "Number of Actions:", len(self.move_list)
 
 		self.listeners = []
 

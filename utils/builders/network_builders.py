@@ -2,7 +2,7 @@ import models.DeepQNetwork as DQN
 import models.DuelingDeepQNetwork as DDQN
 import models.BootstrappedDeepQNetwork as BDQN
 
-from models.parts import *
+from models.parts import FullConnection
 
 def create_dqn_builder(network_layers):
 	"""

@@ -10,14 +10,12 @@ class PriorityReplayMemory:
 	"""
 	"""
 
-	def __init__(self, memory_size=1000000, height=84, width=84, alpha = 0.6, beta = 0.4):
+	def __init__(self, memory_size, frame_size=(84,84), alpha = 0.6, beta = 0.4, epsilon = 1e-6):
 		"""
 		Create a recorder to record the dataset
 		"""
 
-		self.width = width
-		self.height = height
-
+		self.width, self.height = frame_size
 		self.memory_size = memory_size
 
 		# The current index of the buffer.  Assume a circular buffer
@@ -25,18 +23,16 @@ class PriorityReplayMemory:
 		self.filled = False		# Has the buffer been filled?
 
 		# Build an actual memory buffer
-		self.memory = ReplayMemory(memory_size, height, width)
+		self.memory = ReplayMemory(memory_size, frame_size)
 
 		# Build lists of priority, probability and weights
 		self.priority = np.zeros((memory_size,))
-#		self.probability = np.zeros((memory_size,))
-#		self.weights = np.zeros((memory_size,))
 
 		# Parameters - Just a placeholder until this works
 		self.alpha = alpha
 		self.beta = beta
 
-		self.epsilon = 1e-6
+		self.epsilon = epsilon
 
 		# Set the initial priority
 		self.priority[0] = 1.0
@@ -81,8 +77,6 @@ class PriorityReplayMemory:
 		valid_indices = np.arange(history_length - 1, max_idx - 1) + self._idx
 		valid_indices = valid_indices % max_idx
 
-#		probabilities = self.priority[valid_indices]
-#		probabilities = probabilities ** self.alpha
 		probabilities = self.priority ** self.alpha
 		probabilities /= np.sum(probabilities)
 
@@ -119,13 +113,12 @@ class RankedPriorityReplayMemory:
 	"""
 	"""
 
-	def __init__(self, memory_size=1000000, height=84, width=84, alpha = 0.6, beta = 0.4):
+	def __init__(self, memory_size, frame_size = (84,84), alpha = 0.6, beta = 0.4):
 		"""
 		Create a recorder to record the dataset
 		"""
 
-		self.width = width
-		self.height = height
+		self.width, self.height = frame_size
 
 		self.memory_size = memory_size
 
@@ -134,7 +127,7 @@ class RankedPriorityReplayMemory:
 		self.filled = False		# Has the buffer been filled?
 
 		# Build an actual memory buffer
-		self.memory = ReplayMemory(memory_size, height, width)
+		self.memory = ReplayMemory(memory_size, frame_size)
 
 		# Build lists of priority, probability and weights
 		self.priority = np.zeros((memory_size,))

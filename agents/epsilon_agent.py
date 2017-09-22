@@ -10,7 +10,7 @@ class EpsilonAgent:
 	Decorator Agent which implements an epsilon-greedy policy.  Uses a second agent to produce non-random actions
 	"""
 
-	def __init__(self, agent, num_actions, counter, initial_exploration=1.0, final_exploration=0.1, final_frame=1000000):
+	def __init__(self, agent, initial_exploration=1.0, final_exploration=0.1, initial_frame=0, final_frame=1000000):
 		"""
 		"""
 
@@ -18,11 +18,12 @@ class EpsilonAgent:
 		self.eps_init = initial_exploration
 		self.eps_final = final_exploration
 
-		self.counter = counter
+		self.counter = agent.counter
+		self.initial_frame = initial_frame
 		self.final_frame = final_frame
 
 		self.base_agent = agent
-		self.num_actions = num_actions
+		self.num_actions = agent.num_actions
 
 
 	def start_episode(self):
@@ -48,8 +49,10 @@ class EpsilonAgent:
 		# The base agent may require acting for internal purposes, so allow the agent ot act
 		action, Q = self.base_agent.act()
 
-		if self.counter.count < self.final_frame:
-			self.epsilon = self.eps_init + (self.eps_final - self.eps_init)*(float(self.counter.count)/self.final_frame)
+		if self.counter.count < self.initial_frame:
+			self.epsilon = self.eps_init
+		elif self.counter.count < self.final_frame:
+			self.epsilon = self.eps_init + (self.eps_final - self.eps_init)*(float(self.counter.count - self.initial_frame)/self.final_frame)
 		else:
 			self.epsilon = self.eps_final
 
