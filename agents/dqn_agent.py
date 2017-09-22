@@ -19,7 +19,6 @@ class DQN_Agent:
 	Agent which implements a DQN to learn a policy
 	"""
 
-#	def __init__(self, input_shape, hidden_layers, num_actions, replay_memory, counter, config, **kwargs):
 	def __init__(self, input_shape, num_actions, network_builder, replay_memory, counter, config, **kwargs):
 
 		"""
