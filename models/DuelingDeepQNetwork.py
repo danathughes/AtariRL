@@ -5,7 +5,7 @@
 
 import tensorflow as tf
 import numpy as np
-from parts import *
+#from parts import *
 import os
 
 class UpdateOperation(object):

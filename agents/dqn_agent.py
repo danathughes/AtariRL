@@ -3,16 +3,11 @@
 ## Agent which implements a Deep Q Network as a control policy
 ##
 
+import tensorflow as tf
 import numpy as np
 import os
 
-import scipy.ndimage as ndimage
-
-import tensorflow as tf
-from models.DeepQNetwork import *
-from models.DuelingDeepQNetwork import *
-
-from listeners.tensorboard_monitor import *
+from models.DeepQNetwork import UpdateOperation
 
 class DQN_Agent:
 	"""
@@ -193,7 +188,7 @@ class DoubleDQN_Agent(DQN_Agent):
 	Agent which implements a Double DQN to learn a policy
 	"""
 
-	def __init__(self, input_shape, num_actions, history_size, network_builder, replay_memory, counter, **kwargs):
+	def __init__(self, frame_shape, num_actions, history_size, network_builder, replay_memory, counter, **kwargs):
 		"""
 		"""
 

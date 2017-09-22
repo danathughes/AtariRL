@@ -6,13 +6,8 @@
 import numpy as np
 import os
 
-import scipy.ndimage as ndimage
-
 import tensorflow as tf
-from models.BootstrappedDeepQNetwork import *
-# from models.DuelingDeepQNetwork import *
-
-from listeners.tensorboard_monitor import *
+from models.DeepQNetwork import UpdateOperation
 
 class Bootstrapped_DQN_Agent:
 	"""
