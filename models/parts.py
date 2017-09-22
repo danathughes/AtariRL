@@ -86,11 +86,6 @@ class Convolutional:
          # Create the weights and convolutional layer
          weight_shape = [self.kernel_shape[0], self.kernel_shape[1], num_input_channels, self.num_kernels]
 
-#         if self.name:
-#            self.weights = weight_variable(weight_shape, 'W_'+self.name)
-#         else:
-#            self.weights = weight_variable(weight_shape)
-
          self.weights = weight_variable(weight_shape, 'weights', trainable)
          self.bias = bias_variable([self.num_kernels], 'bias', trainable)
 

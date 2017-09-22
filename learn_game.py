@@ -7,51 +7,36 @@
 #import pygame
 #from pygame.locals import *
 
+# Core components
+import tensorflow as tf
 import numpy as np
 import os
 
-#import scipy.ndimage as ndimage
+# Things needed to create the DQN builder
+from models.networks import *
+from utils.builders.network_builders import *
 
-from models.DeepQNetwork import *
-
+# Agent(s) used in 
+from agents.dqn_agent import DQN_Agent
 from agents.bootstrapped_dqn_agent import Bootstrapped_DQN_Agent
-
 from agents.epsilon_agent import EpsilonAgent
+
+# Different Memory types
 from memory.memory import ReplayMemory
 from memory.priority_memory import PriorityReplayMemory
 from memory.bootstrapped_memory import BootstrappedReplayMemory
 
+# Environment
 from environments.AtariEnvironment import AtariEnvironment
 
-import tensorflow as tf
 
+# Listeners to perform various bookkeeping tasks
 from listeners.checkpoint_recorder import *
 from listeners.tensorboard_monitor import *
 
+from utils.counter import Counter
 
 import config
-
-
-
-class Counter:
-	"""
-	Simple class to maintain a shared counter between objects
-	"""
-
-	def __init__(self, initial_count=0):
-		"""
-		"""
-
-		self.count = initial_count
-
-
-	def step(self):
-		"""
-		Increment the counter
-		"""
-
-		self.count += 1
-
 
 
 class AtariGameInterface:
@@ -174,12 +159,25 @@ game_filename='roms/Breakout.bin'
 sess = tf.InteractiveSession()
 counter = Counter()
 
+# Set up the environment
 environment = AtariEnvironment(game_filename)
 num_actions = environment.num_actions()
+
+# Create the memory for the agent
 base_memory = ReplayMemory(config.memory_size, config.screen_width, config.screen_height)
-replay_memory = BootstrappedReplayMemory(config.memory_size, base_memory, 10)
-dqn_agent = Bootstrapped_DQN_Agent((config.screen_width,config.screen_height,config.history_length), config.network_layers[:-2], config.network_layers[-2:], num_actions, 10, replay_memory, counter, config, tf_session=sess)
+replay_memory = ReplayMemory(config.memory_size)
+
+# Create the network for the agent
+#network_builder = create_dqn_builder(NATURE)
+#network_builder = create_dueling_dqn_builder(DUELING)
+network_builder = create_bootstrapped_dqn_builder(NATURE[:-1], NATURE[-1:], 10)
+
+# Build the agent
+#dqn_agent = DQN_Agent((config.screen_width,config.screen_height,config.history_length), num_actions, network_builder, replay_memory, counter, config, tf_session=sess)
+dqn_agent = Bootstrapped_DQN_Agent((config.screen_width,config.screen_height,config.history_length), num_actions, network_builder, replay_memory, 10, counter, config, tf_session=sess)
 agent = EpsilonAgent(dqn_agent, num_actions, counter)
+
+# Put it all together!
 agi = AtariGameInterface(environment, agent, counter, config)
 
 # Create a Tensorboard monitor and populate with the desired summaries
