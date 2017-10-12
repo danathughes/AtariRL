@@ -14,7 +14,7 @@ class Bootstrapped_DQN_Agent:
 	Agent which implements a Bootstrapped DQN to learn a policy
 	"""
 
-	def __init__(self, frame_shape, num_actions, history_size, network_builder, replay_memory, num_heads, counter, **kwargs):
+	def __init__(self, frame_shape, num_actions, history_size, network_builder, replay_memory, num_heads, **kwargs):
 		"""
 		action_update_rate - number of frames to repeat an action
 		"""
@@ -25,29 +25,12 @@ class Bootstrapped_DQN_Agent:
 		self.num_heads = num_heads
 		self.head_number = 0
 
-		# Which frame / step are we on 
-		self.counter = counter
-
 		# Need to query the replay memory for training examples
 		self.replay_memory = replay_memory
-		self.replay_start_size = kwargs.get('replay_start_size', 50000)
 
 		# Discount factor, etc.
 		self.discount_factor = kwargs.get('discount_factor', 0.99)
 		self.minibatch_size = kwargs.get('minibatch_size', 32)
-
-		# Count the actions to determine action repeats and update frequencies
-		self.update_frequency = kwargs.get('update_frequency', 4)
-
-		# Should the network train?
-		if self.counter.count >= self.replay_start_size:
-			self.can_train = True
-			print "DQN can train..."
-		else:
-			self.can_train = False
-
-		# Keep track of frames to know when to train, switch networks, etc.
-		self.target_update_frequency = kwargs.get('target_update_frequency', 10000)
 
 		# Did the user provide a session?
 		self.sess = kwargs.get('tf_session', tf.InteractiveSession())
@@ -112,19 +95,6 @@ class Bootstrapped_DQN_Agent:
 
 		# Add the experience to the replay memory
 		self.replay_memory.record(self.state_history[:,:,3], action, reward, is_terminal)		
-
-		# Has enough frames occured to start training?
-		if self.counter.count == self.replay_start_size:
-			self.can_train = True
-			print "Start Training..."
-
-		# Should training occur?  
-		if self.counter.count % self.update_frequency == 0 and self.can_train:
-			self.train()
-
-		# Should the target network be updated?
-		if self.counter.count % self.target_update_frequency == 0:
-			self.update_target_network()
 
 
 	def createDataset(self, size):

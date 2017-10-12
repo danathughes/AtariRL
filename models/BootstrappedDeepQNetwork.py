@@ -142,9 +142,5 @@ class BootstrappedDeepQNetwork(object):
 
          self.sess.run(param.assign(values))
 
-#      print path
-
-#      self.saver.restore(self.sess, path)
-
 
 

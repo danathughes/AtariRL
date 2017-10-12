@@ -150,14 +150,9 @@ class DuelingDeepQNetwork(object):
 
       # Perform some assertions / checks to make sure that the directory exists...
 
-#      for name, param in self.params.items():
-#         values = np.load(directory + '/' + name + '.npy')
+      for name, param in self.params.items():
+         values = np.load(directory + '/' + name + '.npy')
 
-#         self.sess.run(param.assign(values))
-
-      print directory
-
-      self.saver.restore(self.sess, directory + '/dqn_model-4000000' )
-
+         self.sess.run(param.assign(values))
 
 

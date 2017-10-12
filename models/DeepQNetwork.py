@@ -116,6 +116,7 @@ class DeepQNetwork(object):
 
    def restore(self, directory):
       """
+      Restore the parameters from a numpy array
       """
 
       # Perform some assertions / checks to make sure that the directory exists...
@@ -124,10 +125,6 @@ class DeepQNetwork(object):
          values = np.load(directory + '/' + name + '.npy')
 
          self.sess.run(param.assign(values))
-
-#      print path
-
-#      self.saver.restore(self.sess, path)
 
 
 
