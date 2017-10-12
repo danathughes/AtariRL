@@ -22,6 +22,7 @@ from agents.bootstrapped_dqn_agent import Bootstrapped_DQN_Agent
 from agents.epsilon_agent import EpsilonAgent
 
 from listeners.checkpoint_recorder import CheckpointRecorder
+from listeners.tensorboard_monitor import TensorboardMonitor
 
 from utils.counter import Counter
 
@@ -73,7 +74,6 @@ def load(config_filename, sess):
 	Loads a configuration of compoents from a file
 
 	config_filename - Name of the file to load components from
-	components      - A list of components to load from the file
 	sess				 - The tensorflow session to run everything in
 	"""
 
@@ -89,14 +89,16 @@ def load(config_filename, sess):
 	memory = load_memory(config, environment, num_heads)
 
 	# Make a counter
-	counter = Counter()
+	counter_start = load_int(config, 'Counter', 'start', 0)
+	counter = Counter(counter_start)
 
 	dqn_agent, agent, eval_agent = load_agent(config, environment, network_builder, memory, counter, sess, num_heads)
 
 	# Create a checkpoint object to save the agent and memory
 	checkpoint = load_checkpoint(config, dqn_agent.dqn, memory, counter, sess)
+	tensorboard = load_tensorboard(config, dqn_agent, sess, counter)
 
-	return environment, agent, eval_agent, counter, checkpoint
+	return environment, agent, eval_agent, counter, checkpoint, tensorboard
 
 
 
@@ -286,3 +288,23 @@ def load_checkpoint(config, dqn, memory, counter, sess):
 	counter.add_hook(checkpoint.save_memory, memory_save_rate)
 
 	return checkpoint
+
+
+def load_tensorboard(config, dqn_agent, sess, counter):
+	"""
+	Create a Tensorboard monitoring object
+	"""
+
+	# What's the path for logging?
+	log_path = load_str(config, 'Tensorboard', 'path', './log')
+
+	tensorboard = TensorboardMonitor(log_path, sess, counter)
+	tensorboard.add_scalar_summary('score', 'per_game_summary')
+	tensorboard.add_scalar_summary('training_loss', 'training_summary')
+	for i in range(dqn_agent.num_actions):
+		tensorboard.add_histogram_summary('Q%d_training' % i, 'training_summary')
+
+	# Allow the dqn agent access to the tensorboard monitor to report statistics
+	dqn_agent.add_listener(tensorboard)
+
+	return tensorboard
