@@ -72,8 +72,6 @@ class BootstrappedDeepQNetwork(object):
         self.optimizer = ClippedRMSPropOptimizer(self)
       else:
         self.optimizer = None
-
-      self.saver = tf.train.Saver()
         
 
    def get_Qs(self, states):
@@ -127,8 +125,6 @@ class BootstrappedDeepQNetwork(object):
          param_value = self.sess.run(param.value())
 
          np.save(directory + '/' + name, param_value)
-
-      self.saver.save(self.sess, directory + '/dqn_model', global_step=step)
 
 
    def restore(self, directory):

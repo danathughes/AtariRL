@@ -33,3 +33,40 @@ class Update(object):
     """
 
     self.sess.run(self.update_operations)
+
+
+class TensorflowCheckpoint:
+  """
+  Class to save and restore a tensorflow graph
+  """
+
+  def __init__(self, save_path, counter, sess):
+    """
+    """
+
+    self.path = save_path
+    self.saver = tf.train.Saver()
+    self.counter = counter
+    self.sess = sess
+
+
+  def save(self):
+    """
+    Save the current parameters in the graph
+    """
+
+    self.saver.save(self.sess, self.path + '/tensorflow-model', global_step=self.counter.count)
+
+
+  def restore(self, checkpoint_frame=None):
+    """
+    Restores a checkpoint.
+
+    checkpoint_frame - Frame number of desired checkpoint to be loaded.  If None is provided,
+                       the most recent checkpoint 
+    """
+
+    if checkpoint_frame:
+      self.saver.restore(self.sess, self.path + '/tensorflow-model-%d' % checkpoint_frame)
+    else:
+      self.saver.restore(self.sess, self.saver.latest_checkpoint())

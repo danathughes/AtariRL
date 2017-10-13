@@ -14,10 +14,14 @@ dqn_agent = agent.base_agent
 
 # Put it all together!
 trainer = AtariTrainer(environment, agent, counter, eval_agent=eval_agent)
-trainer.add_listener(tensorboard_monitor)
+trainer.add_listener(tensorboard)
 
 # Start Tensorflow
 sess.run(tf.global_variables_initializer())
+
+# Can restore things from the checkpoint, if desired
+#checkpoint.restore_memory(1000000)
+#checkpoint.restore_tensorflow(1000000)
 
 def run():
 	cur_episode = 0

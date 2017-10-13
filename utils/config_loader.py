@@ -277,8 +277,8 @@ def load_checkpoint(config, dqn, memory, counter, sess):
 	checkpoint_path = load_str(config, 'Checkpoint', 'path', './checkpoint')
 
 	# How often to save the DQN parameters, tensorflow graph and memory?
-	dqn_save_rate = load_int(config, 'Checkpoint', 'dqn_save_rate', 50000)
-	graph_save_rate = load_int(config, 'Checkpoint', 'graph_save_rate', 250000)
+	dqn_save_rate = load_int(config, 'Checkpoint', 'dqn_save_rate', 100000)
+	tensorflow_save_rate = load_int(config, 'Checkpoint', 'tensorflow_save_rate', 100000)
 	memory_save_rate = load_int(config, 'Checkpoint', 'memory_save_rate', 1000000)
 
 	checkpoint = CheckpointRecorder(dqn, memory, counter, checkpoint_path, sess)
@@ -286,6 +286,7 @@ def load_checkpoint(config, dqn, memory, counter, sess):
 	# Add the hooks to the counter
 	counter.add_hook(checkpoint.save_dqn, dqn_save_rate)
 	counter.add_hook(checkpoint.save_memory, memory_save_rate)
+	counter.add_hook(checkpoint.save_tensorflow, tensorflow_save_rate)
 
 	return checkpoint
 
