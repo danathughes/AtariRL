@@ -12,6 +12,12 @@ Implementations of various Deep-Q Networks for learning Atari games.  The reposi
 
 5.  Utilities for loading from a configuration file, storing checkpoints, and visualizing using TensorBoard.
 
+The various approaches to deep learning for video games is summarized nicely in the image below.
+
+![alt test][deeprl_history]
+
+[deeprl_history]: https://github.com/danathughes/AtariRL/blob/master/images/DeepRL_papers.png "Recent approaches to playing video games with Deep RL"
+
 ## Achieved Implementations
 
 Currently, the approaches used in the following papers can be implemented:
