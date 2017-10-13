@@ -46,7 +46,7 @@ class CheckpointRecorder(object):
 		"""
 
 		print "Restoring Replay Memory..."
-		self.replay_memory.restore(self.checkpoint_dir + '/replay_memory/%d' % frame_number)
+		self.replay_memory.load(self.checkpoint_dir + '/replay_memory/%d' % frame_number)
 
 
 	def save_dqn(self):
