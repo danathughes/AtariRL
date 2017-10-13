@@ -6,24 +6,18 @@ import cPickle as pickle
 import scipy.ndimage as ndimage
 from memory import ReplayMemory
 
-class PriorityReplayMemory:
+class PriorityReplayMemory(ReplayMemory):
 	"""
+	An extension of Experience Replay Memory which introduces a priority for each frame.
 	"""
 
-	def __init__(self, memory_size, frame_size=(84,84), alpha = 0.6, beta = 0.4, epsilon = 1e-6):
+	def __init__(self, memory_size=1000000, frame_size=(84,84), alpha = 0.6, beta = 0.4, epsilon = 1e-6):
 		"""
 		Create a recorder to record the dataset
 		"""
 
-		self.width, self.height = frame_size
-		self.memory_size = memory_size
-
-		# The current index of the buffer.  Assume a circular buffer
-		self._idx = 0
-		self.filled = False		# Has the buffer been filled?
-
-		# Build an actual memory buffer
-		self.memory = ReplayMemory(memory_size, frame_size)
+		# Initialize the base memory
+		ReplayMemory.__init__(self, memory_size, frame_size)
 
 		# Build lists of priority, probability and weights
 		self.priority = np.zeros((memory_size,))
@@ -46,12 +40,7 @@ class PriorityReplayMemory:
 		# Set the priority, then record the memory, to ensure the indices are the same
 		self.priority[self._idx] = np.max(self.priority)
 
-		self.memory.record(frame, action, reward, is_terminal)
-
-		# Update the index to match the memory's index
-		self._idx = self.memory._idx
-		self.filled = self.memory.filled
-		self.memory_size = self.memory.memory_size
+		ReplayMemory.record(self, frame, action, reward, is_terminal)
 
 
 	def update(self, indices, TD_error):
@@ -85,7 +74,7 @@ class PriorityReplayMemory:
 		indices = np.random.choice(valid_indices, size, False, probs)
 
 		# Populate the experiences as normally
-		experiences = self.memory.pull_experiences(indices, history_length, max_idx)
+		experiences = self.pull_experiences(indices, history_length, max_idx)
 
 		# Calculate the weights of each experience
 		weights = (size*probabilities[indices]) ** (-self.beta)
@@ -97,70 +86,37 @@ class PriorityReplayMemory:
 		"""
 		"""
 
-		self.memory.save(path)
+		ReplayMemory.save(self, path)
+
+		f = open(path + '/priority.npy', 'wb')
+		np.save(f, self.priority)
+		f.close()
 
 
 	def load(self, path):
 		"""
 		"""
 
-		self.memory.load(path)
+		ReplayMemory.load(self, path)
+
+		self.priority = None
+
+		f = open(path + '/priority.npy')
+		self.priority = np.load(f)
+		f.close()
 
 
-
-
-class RankedPriorityReplayMemory:
+class RankedPriorityReplayMemory(PriorityReplayMemory):
 	"""
+	An variation of Priority Replay Memory where priority is rank-based (i.e., a power-law distribution)
 	"""
 
-	def __init__(self, memory_size, frame_size = (84,84), alpha = 0.6, beta = 0.4):
+	def __init__(self, memory_size=1000000, frame_size = (84,84), alpha = 0.6, beta = 0.4):
 		"""
 		Create a recorder to record the dataset
 		"""
 
-		self.width, self.height = frame_size
-
-		self.memory_size = memory_size
-
-		# The current index of the buffer.  Assume a circular buffer
-		self._idx = 0
-		self.filled = False		# Has the buffer been filled?
-
-		# Build an actual memory buffer
-		self.memory = ReplayMemory(memory_size, frame_size)
-
-		# Build lists of priority, probability and weights
-		self.priority = np.zeros((memory_size,))
-
-		# Parameters - Just a placeholder until this works
-		self.alpha = alpha
-		self.beta = beta
-
-		# Set the initial priority
-		self.priority[0] = 1.0
-
-
-	def record(self, frame, action, reward, is_terminal):
-		"""
-		Store this state, action and reward.  Flush and start a new batch if necessary
-		"""
-
-		# Set the priority, then record the memory, to ensure the indices are the same
-		self.priority[self._idx] = np.max(self.priority)
-
-		self.memory.record(frame, action, reward, is_terminal)
-
-		# Update the index to match the memory's index
-		self._idx = self.memory._idx
-		self.filled = self.memory.filled
-
-
-	def update(self, indices, TD_error):
-		"""
-		Update the priorities at the indices with the new TD error
-		"""
-
-		self.priority[indices] = np.abs(TD_error)
+		PriorityReplayMemory.__init__(self, memory_size, frame_size, alpha, beta, epsilon=0.0)
 
 
 	def get_samples(self, size, history_length=4):
@@ -192,23 +148,9 @@ class RankedPriorityReplayMemory:
 		indices = np.random.choice(valid_indices, size, False, probs)
 
 		# Populate the experiences as normally
-		experiences = self.memory.pull_experiences(indices, history_length, max_idx)
+		experiences = self.pull_experiences(indices, history_length, max_idx)
 
 		# Calculate the weights of each experience
 		weights = (size*probabilities[indices]) ** (-self.beta)
 
 		return experiences, indices, weights
-
-
-	def save(self, path):
-		"""
-		"""
-
-		self.memory.save(path)
-
-
-	def load(self, path):
-		"""
-		"""
-
-		self.memory.load(path)
