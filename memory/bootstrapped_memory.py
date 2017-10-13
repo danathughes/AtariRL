@@ -75,9 +75,19 @@ class BootstrappedReplayMemory:
 
 		self.memory.save(path)
 
+		f = open(path + '/masks.npy', 'wb')
+		np.save(f, self.masks)
+		f.close()
+
 
 	def load(self, path):
 		"""
 		"""
 
 		self.memory.load(path)
+
+		self.masks = None
+
+		f = open(path + '/masks.npy')
+		self.masks = np.load(f)
+		f.close()
