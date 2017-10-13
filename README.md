@@ -32,6 +32,22 @@ Currently, the approaches used in the following papers can be implemented:
 
 * [Deep Exploration via Bootstrapped DQN] [6].
 
+[1]: https://arxiv.org/abs/1312.5602
+
+[2]: http://www.nature.com/nature/journal/v518/n7540/abs/nature14236.html
+
+[3]: https://arxiv.org/abs/1509.06461
+
+[4]: https://arxiv.org/abs/1511.06581
+
+[5]: https://arxiv.org/abs/1511.05952
+
+[6]: https://arxiv.org/abs/1602.04621
+
+[7]: https://arxiv.org/abs/1602.01783
+
+[8]: https://arxiv.org/abs/1603.00748
+
 ## Current Work
 
 Current papers / architectures being implemented:
@@ -56,6 +72,21 @@ Other implementations which still need to be implemented (not sure when, though)
 
 * All the approaches used to handle Montezuma's revenge.
 
+[1]: https://arxiv.org/abs/1312.5602
+
+[2]: http://www.nature.com/nature/journal/v518/n7540/abs/nature14236.html
+
+[3]: https://arxiv.org/abs/1509.06461
+
+[4]: https://arxiv.org/abs/1511.06581
+
+[5]: https://arxiv.org/abs/1511.05952
+
+[6]: https://arxiv.org/abs/1602.04621
+
+[7]: https://arxiv.org/abs/1602.01783
+
+[8]: https://arxiv.org/abs/1603.00748
 
 ## Prerequisites
 
