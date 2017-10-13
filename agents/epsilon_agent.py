@@ -41,7 +41,6 @@ class EpsilonAgent:
 		self.base_agent.observe(state)
 
 
-
 	def act(self):
 		"""
 		"""
@@ -49,6 +48,7 @@ class EpsilonAgent:
 		# The base agent may require acting for internal purposes, so allow the agent ot act
 		action, Q = self.base_agent.act()
 
+		# Determine if epsilon is the initial or final value, or some transition value inbetween
 		if self.counter.count < self.initial_frame:
 			self.epsilon = self.eps_init
 		elif self.counter.count < self.final_frame:
