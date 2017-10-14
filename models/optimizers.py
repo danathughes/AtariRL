@@ -17,7 +17,7 @@ class ClippedRMSPropOptimizer(object):
 
     # Discount factor, learning rate, momentum, etc.
     self.learning_rate = kwargs.get('learning_rate', 0.00025)
-    self.momentum = kwargs.get('momentum', 0.0)
+    self.momentum = kwargs.get('momentum', 0.95)
     self.epsilon = kwargs.get('epsilon', 1e-6)
     self.decay = kwargs.get('decay', 0.99)
 
@@ -37,14 +37,16 @@ class ClippedRMSPropOptimizer(object):
       squared_loss = 0.5*tf.square(delta)
       huber_loss = tf.where(tf.abs(delta) < 1.0, squared_loss, tf.abs(delta) - 0.5)
 
+#      huber_loss = tf.losses.huber_loss(self.target_Q, action_Q)
       weighted_loss = self.weights * huber_loss
 
       self.loss = tf.reduce_mean(weighted_loss, name='loss')
 
       # Create the optimization operation
       self.optimizer = tf.train.RMSPropOptimizer(self.learning_rate, momentum=self.momentum, epsilon=self.epsilon)
+      self.train_step = self.optimizer.minimize(self.loss)
 
       # Need to clip gradients between -1 and 1 to stabilize learning
-      grads_and_vars = self.optimizer.compute_gradients(self.loss)
-      capped_grads_and_vars = [(tf.clip_by_value(grad, -1.0, 1.0), var) if grad is not None else (None, var) for grad, var in grads_and_vars]
-      self.train_step = self.optimizer.apply_gradients(capped_grads_and_vars)
+#      grads_and_vars = self.optimizer.compute_gradients(self.loss)
+#      capped_grads_and_vars = [(tf.clip_by_value(grad, -1.0, 1.0), var) if grad is not None else (None, var) for grad, var in grads_and_vars]
+#      self.train_step = self.optimizer.apply_gradients(capped_grads_and_vars)

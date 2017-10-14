@@ -23,9 +23,6 @@ class DQN_Agent:
 		self.num_actions = num_actions
 		self.history_size = history_size
 
-		# Which frame / step are we on 
-#		self.counter = counter
-
 		# Need to query the replay memory for training examples
 		self.replay_memory = replay_memory
 
