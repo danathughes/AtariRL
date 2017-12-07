@@ -101,7 +101,7 @@ class AtariTrainer:
 		# Reset the game to start a new episode
 		self.environment.reset_game()
 
-		self.environment.display()
+#		self.environment.display()
 
 		# Perform a certain number of noops
 		for i in range(num_noop):
@@ -109,7 +109,7 @@ class AtariTrainer:
 
 		while not self.environment.terminal():
 			state = self.environment.get_state()
-			self.environment.display()
+#			self.environment.display()
 
 			self.eval_agent.observe(state)
 			action, Q = self.eval_agent.act()
