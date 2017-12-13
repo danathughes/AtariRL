@@ -95,11 +95,10 @@ class DQN_Agent:
 		"""
 
 		# Create and populate arrays for the input, target and mask for the DQN
-#		experiences, indices, weights = self.replay_memory.get_samples(self.minibatch_size)
-#		states, actions, rewards, next_states, terminals = experiences
-		states, actions, rewards, next_states, terminals = self.replay_memory.get_samples(self.minibatch_size)
-		weights = np.ones(rewards.shape)
-
+		experiences, indices, weights = self.replay_memory.get_samples(self.minibatch_size)
+		states, actions, rewards, next_states, terminals = experiences
+#		states, actions, rewards, next_states, terminals = self.replay_memory.get_samples(self.minibatch_size)
+#		weights = np.ones(rewards.shape)
 
 		# Get what the normal output would be for the DQN
 		targets = self.dqn.get_Qs(states)
@@ -117,8 +116,8 @@ class DQN_Agent:
 		target_Q = rewards + Qnext
 
 		# Calculate the TD error and inform the memory, for possible update
-#		TD_error = target_Q - self.dqn.get_Qs(states)[idx, actions]
-#		self.replay_memory.update(indices, TD_error)
+		TD_error = target_Q - self.dqn.get_Qs(states)[idx, actions]
+		self.replay_memory.update(indices, TD_error)
 
 		return states, targets, actions, target_Q, weights
 

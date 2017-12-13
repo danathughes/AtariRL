@@ -8,8 +8,7 @@ import scipy.ndimage as ndimage
 class ReplayMemory:
 	"""
 	"""
-
-#	def __init__(self, memory_size=1000000, height=84, width=84):
+	
 	def __init__(self, memory_size=1000000, frame_size = (84,84)):
 
 		"""
@@ -88,7 +87,11 @@ class ReplayMemory:
 		n = (indices + 1) % max_idx
 		next_state[:,:,:,3] = self.frames[n,:,:].astype(np.float32)# / 255.0
 
-		return state, self.actions[indices], self.rewards[indices], next_state, self.terminal[n]
+#		return state, self.actions[indices], self.rewards[indices], next_state, self.terminal[n]
+		experiences = (state, self.actions[indices], self.rewards[indices], next_state, self.terminal[n])
+		weights = np.ones((size,))
+
+		return experiences, indices, weights
 
 
 	def save(self, path):
