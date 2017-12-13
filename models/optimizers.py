@@ -18,8 +18,8 @@ class ClippedRMSPropOptimizer(object):
     # Discount factor, learning rate, momentum, etc.
     self.learning_rate = kwargs.get('learning_rate', 0.00025)
     self.momentum = kwargs.get('momentum', 0.0)
-    self.epsilon = kwargs.get('epsilon', 1e-6)
-    self.decay = kwargs.get('decay', 0.99)
+    self.epsilon = kwargs.get('epsilon', 0.01)
+    self.decay = kwargs.get('decay', 0.95)
 
     # Alternative has RMS Params as: Learning Rate = 0.00025, Decay = 0.99, Momentum = 0.0, Epsilon=1e-6
 

@@ -20,7 +20,8 @@ class AtariEnvironment:
 
 		# Optional parameters
 		self.screen_size = kwargs.get('screen_size', (84,84))
-		self.random_seed = kwargs.get('seed', 123)
+#		self.random_seed = kwargs.get('seed', 123)
+		self.random_seed = kwargs.get('seed', 0)
 
 		# Buffer for grabbing the screen from ALE
 		self.screen_buffer = np.zeros((100800,), np.uint8)
