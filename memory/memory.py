@@ -8,7 +8,7 @@ import scipy.ndimage as ndimage
 class ReplayMemory:
 	"""
 	"""
-	
+
 	def __init__(self, memory_size=1000000, frame_size = (84,84)):
 
 		"""
@@ -55,7 +55,7 @@ class ReplayMemory:
 		pass
 
 
-	def get_samples(self, size, history_length=4):
+	def get_samples_old(self, size, history_length=4):
 		"""
 		Return an array of samples
 		"""
@@ -92,6 +92,55 @@ class ReplayMemory:
 		weights = np.ones((size,))
 
 		return experiences, indices, weights
+
+
+	def get_samples(self, size, history_length=4):
+		"""
+		Return an array of samples
+		"""
+
+
+		# Figure out to how big the current array is
+		if self.filled:
+			max_idx = self.memory_size
+		else:
+			max_idx = self._idx
+
+		# Generate indices to use.  Note that the highest index should be one less than the max
+		# so that the next state value can be generated, and should be at least history_length,
+		# so enough history is available to fill up the state.
+		# Also note that the indices should be shifted by the current index, and modulo'd.  This
+		# makes sure that the valid range of indices are mapped propertly to the array
+		indices = np.random.randint(history_length-1, max_idx-1, (size,)) + self._idx
+		indices = indices % max_idx
+
+		experiences = self.pull_experiences(indices, history_length, max_idx)
+		weights = np.ones((size,))
+
+		return experiences, indices, weights
+
+
+	def pull_experiences(self, indices, history_length, max_idx):
+		"""
+		Get the states, actions, rewards, next_states and terminal at the provided indices
+		"""
+
+		size = len(indices)
+
+		state = np.zeros((size, self.height, self.width, history_length), np.float32)
+		next_state = np.zeros((size, self.height, self.width, history_length), np.float32)
+
+		# Get the current and next state
+		for i in range(history_length):
+			# Sample the prior history frames
+			n = (indices - (history_length - 1) + i) % max_idx
+			state[:,:,:,i] = self.frames[n,:,:].astype(np.float32)# / 255.0
+		next_state[:,:,:,0:history_length-1] = state[:,:,:,1:history_length]
+		n = (indices + 1) % max_idx
+		next_state[:,:,:,history_length-1] = self.frames[n,:,:].astype(np.float32)# / 255.0
+
+		return state, self.actions[indices], self.rewards[indices], next_state, self.terminal[n]
+
 
 
 	def save(self, path):
