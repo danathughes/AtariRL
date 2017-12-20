@@ -20,13 +20,13 @@ trainer.add_listener(tensorboard)
 sess.run(tf.global_variables_initializer())
 
 # Can restore things from the checkpoint, if desired
-#checkpoint.restore_memory(1000000)
-#checkpoint.restore_tensorflow(1000000)
+checkpoint.restore_memory(5000000)
+checkpoint.restore_tensorflow(5900000)
 
 def run():
 	cur_episode = 0
 	num_frames = counter.count
-	while counter.count < 50000000:
+	while counter.count <= 50000000:
 		score = trainer.learn_episode()
 
 		tensorboard.record({'score': score})
