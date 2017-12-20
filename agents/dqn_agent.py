@@ -97,8 +97,6 @@ class DQN_Agent:
 		# Create and populate arrays for the input, target and mask for the DQN
 		experiences, indices, weights = self.replay_memory.get_samples(self.minibatch_size)
 		states, actions, rewards, next_states, terminals = experiences
-#		states, actions, rewards, next_states, terminals = self.replay_memory.get_samples(self.minibatch_size)
-#		weights = np.ones(rewards.shape)
 
 		# Get what the normal output would be for the DQN
 		targets = self.dqn.get_Qs(states)
@@ -160,14 +158,14 @@ class DoubleDQN_Agent(DQN_Agent):
 	Agent which implements a Double DQN to learn a policy
 	"""
 
-	def __init__(self, frame_shape, num_actions, history_size, network_builder, replay_memory, counter, **kwargs):
+	def __init__(self, frame_shape, num_actions, history_size, network_builder, replay_memory, **kwargs):
 		"""
 		"""
 
 		# The Double DQN agent is almost exactly the same as a DQN agent, so this'll just
 		# subclass a DQN agent and change the appropriate methods
 
-		DQN_Agent.__init__(self, frame_shape, num_actions, history_size, network_builder, replay_memory, counter, **kwargs)
+		DQN_Agent.__init__(self, frame_shape, num_actions, history_size, network_builder, replay_memory, **kwargs)
 
 
 	def createDataset(self, size):
