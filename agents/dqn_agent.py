@@ -14,7 +14,7 @@ class DQN_Agent:
 	Agent which implements a DQN to learn a policy
 	"""
 
-	def __init__(self, frame_shape, num_actions, history_size, network_builder, replay_memory, **kwargs):
+	def __init__(self, frame_shape, num_actions, history_size, dqn, target_dqn, replay_memory, **kwargs):
 
 		"""
 		action_update_rate - number of frames to repeat an action
@@ -33,8 +33,8 @@ class DQN_Agent:
 		# Initialize a Tensorflow session and create two DQNs
 		input_shape = frame_shape + (history_size,)
 
-		self.dqn = network_builder(input_shape, num_actions, network_name='dqn')
-		self.target_dqn = network_builder(input_shape, num_actions, network_name='target_dqn', trainable=False)
+		self.dqn = dqn
+		self.target_dqn = target_dqn
 		self.update_operation = operations.Update(self.dqn, self.target_dqn)
 
 		# Maintain a history of the previous states for use as input
@@ -155,14 +155,14 @@ class DoubleDQN_Agent(DQN_Agent):
 	Agent which implements a Double DQN to learn a policy
 	"""
 
-	def __init__(self, frame_shape, num_actions, history_size, network_builder, replay_memory, **kwargs):
+	def __init__(self, frame_shape, num_actions, history_size, dqn, target_dqn, replay_memory, **kwargs):
 		"""
 		"""
 
 		# The Double DQN agent is almost exactly the same as a DQN agent, so this'll just
 		# subclass a DQN agent and change the appropriate methods
 
-		DQN_Agent.__init__(self, frame_shape, num_actions, history_size, network_builder, replay_memory, **kwargs)
+		DQN_Agent.__init__(self, frame_shape, num_actions, history_size, dqn, target_dqn, replay_memory, **kwargs)
 
 
 	def createDataset(self, size):

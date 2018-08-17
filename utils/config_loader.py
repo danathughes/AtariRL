@@ -84,14 +84,14 @@ def load(config_filename):
 
 	# Parse and construct each part
 	environment = load_environment(config)
-	network_builder, num_heads = load_network(config)
-	memory = load_memory(config, environment, num_heads)
+	dqn, target_dqn = load_network(config, environment)
+	memory = load_memory(config, environment)
 
 	# Make a counter
 	counter_start = load_int(config, 'Counter', 'start', 0)
 	counter = Counter(counter_start)
 
-	dqn_agent, agent, eval_agent = load_agent(config, environment, network_builder, memory, counter, num_heads)
+	dqn_agent, agent, eval_agent = load_agent(config, environment, dqn, target_dqn, memory, counter)
 
 	# Create a checkpoint object to save the agent and memory
 	checkpoint = load_checkpoint(config, dqn_agent.dqn, memory, counter)
@@ -101,7 +101,7 @@ def load(config_filename):
 
 
 
-def load_agent(config, environment, network_builder, memory, counter, num_heads):
+def load_agent(config, environment, dqn, target_dqn, memory, counter):
 	"""
 	Load an agent from the ConfigParser
 	"""
@@ -122,13 +122,14 @@ def load_agent(config, environment, network_builder, memory, counter, num_heads)
 
 	# Build the agent!
 	if agent_type == "DQN":
-		dqn_agent = DQN_Agent(frame_shape, num_actions, history_size, network_builder, memory,
+		dqn_agent = DQN_Agent(frame_shape, num_actions, history_size, dqn, target_dqn, memory,
 									 minibatch_size=minibatch_size, discount_factor=discount_factor)
 	elif agent_type == "DoubleDQN":
-		dqn_agent = DoubleDQN_Agent(frame_shape, num_actions, history_size, network_builder, memory,
+		dqn_agent = DoubleDQN_Agent(frame_shape, num_actions, history_size, dqn, target_dqn, memory,
 									 minibatch_size=minibatch_size, discount_factor=discount_factor)
 	elif agent_type == "BootstrappedDQN":
-		dqn_agent = Bootstrapped_DQN_Agent(frame_shape, num_actions, history_size, network_builder, memory, num_heads,
+		num_heads = load_int(config, 'Network', 'num_heads', 10)
+		dqn_agent = Bootstrapped_DQN_Agent(frame_shape, num_actions, history_size, dqn, target_dqn, memory, num_heads,
 									 minibatch_size=minibatch_size, discount_factor=discount_factor)
 
 	# Add callbacks to the counter for the dqn agent
@@ -181,7 +182,7 @@ def load_environment(config):
 		return None
 
 
-def load_memory(config, environment, num_heads):
+def load_memory(config, environment):
 	"""
 	Load memory from the ConfigParser
 	"""
@@ -214,7 +215,8 @@ def load_memory(config, environment, num_heads):
 			base_memory = RankedPriorityReplayMemory(size, environment.screen_size, alpha, beta)
 		else:
 			base_memory = ReplayMemory(size, environment.screen_size)
-
+	
+		num_heads = load_int(config, 'Network', 'num_heads', 10)
 		memory = BootstrappedReplayMemory(size, base_memory, num_heads)
 
 	else:
@@ -224,7 +226,7 @@ def load_memory(config, environment, num_heads):
 	return memory
 
 
-def load_network(config):
+def load_network(config, environment):
 	"""
 	Load a neural network builder
 	"""
@@ -264,7 +266,15 @@ def load_network(config):
 		print "Unknown network type: %s" % network_type
 		return None
 
-	return builder, num_heads
+	# Make a DQN and Target DQN
+	history_size = load_int(config, 'Agent', 'history_size', 4)
+
+	input_shape = environment.screen_size + (history_size, )
+
+	dqn = builder(input_shape, environment.num_actions, network_name='dqn')
+	target_dqn = builder(input_shape, environment.num_actions, network_name='target_dqn', trainable=False)
+
+	return dqn, target_dqn
 
 
 def load_checkpoint(config, dqn, memory, counter):

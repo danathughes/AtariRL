@@ -35,8 +35,13 @@ class Bootstrapped_DQN_Agent:
 		# Initialize a Tensorflow session and create two DQNs
 		input_shape = frame_shape + (history_size,)
 
-		self.dqn = network_builder(input_shape, num_actions, network_name='dqn')
-		self.target_dqn = network_builder(input_shape, num_actions, network_name='target_dqn', trainable=False)
+#		self.dqn = network_builder(input_shape, num_actions, network_name='dqn')
+#		self.target_dqn = network_builder(input_shape, num_actions, network_name='target_dqn', trainable=False)
+
+		self.dqn = dqn
+		self.target_dqn = target_dqn
+
+
 		self.update_operation = operations.Update(self.dqn, self.target_dqn)
 
 		# Maintain a history of the previous states for use as input
