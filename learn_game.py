@@ -9,7 +9,7 @@ from AtariTrainer import AtariTrainer
 
 sess = tf.InteractiveSession()
 
-environment, agent, eval_agent, counter, checkpoint, tensorboard = load_config('example.cfg', sess)
+environment, agent, eval_agent, counter, checkpoint, tensorboard = load_config('example.cfg')
 dqn_agent = agent.base_agent
 
 # Put it all together!
@@ -20,8 +20,9 @@ trainer.add_listener(tensorboard)
 sess.run(tf.global_variables_initializer())
 
 # Can restore things from the checkpoint, if desired
-checkpoint.restore_memory(5000000)
-checkpoint.restore_tensorflow(5900000)
+if counter.count > 0:
+	checkpoint.restore_memory(counter.count)
+	checkpoint.restore_tensorflow(counter.count)
 
 def run():
 	cur_episode = 0

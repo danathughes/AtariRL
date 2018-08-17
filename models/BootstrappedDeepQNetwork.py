@@ -12,7 +12,8 @@ from models.optimizer import ClippedRMSPropOptimizer
 
 class BootstrappedDeepQNetwork(object):
 
-   def __init__(self, frame_shape, shared_hidden_layers, head_layers, num_actions, num_heads, sess, **kwargs):
+#   def __init__(self, frame_shape, shared_hidden_layers, head_layers, num_actions, num_heads, sess, **kwargs):
+   def __init__(self, frame_shape, shared_hidden_layers, head_layers, num_actions, num_heads, **kwargs):
       """
       Build a deep convolutional neural network network
 
@@ -30,7 +31,9 @@ class BootstrappedDeepQNetwork(object):
       # Input and target placeholders
       self._trainable = kwargs.get('trainable', True)
 
-      self.sess = sess
+      # Get the default session to perform operations in; raise an error if no session is available 
+      self.sess = tf.get_default_session()
+      assert self.sess != None, "No Tensorflow Session found, a Session is needed for the DQN"
 
       self.frame_shape = tuple(frame_shape)
       self.num_actions = num_actions

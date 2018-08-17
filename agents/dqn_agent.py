@@ -30,15 +30,12 @@ class DQN_Agent:
 		self.discount_factor = kwargs.get('discount_factor', 0.99)
 		self.minibatch_size = kwargs.get('minibatch_size', 32)
 
-		# Did the user provide a session?
-		self.sess = kwargs.get('tf_session', tf.InteractiveSession())
-
 		# Initialize a Tensorflow session and create two DQNs
 		input_shape = frame_shape + (history_size,)
-		self.dqn = network_builder(input_shape, num_actions, self.sess, network_name='dqn')
-		self.target_dqn = network_builder(input_shape, num_actions, self.sess, network_name='target_dqn', trainable=False)
 
-		self.update_operation = operations.Update(self.dqn, self.target_dqn, self.sess)
+		self.dqn = network_builder(input_shape, num_actions, network_name='dqn')
+		self.target_dqn = network_builder(input_shape, num_actions, network_name='target_dqn', trainable=False)
+		self.update_operation = operations.Update(self.dqn, self.target_dqn)
 
 		# Maintain a history of the previous states for use as input
 		self.state_history = np.zeros(input_shape)

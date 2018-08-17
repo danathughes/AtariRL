@@ -5,7 +5,7 @@ class TensorboardMonitor:
 	"""
 	"""
 
-	def __init__(self, logdir, sess, counter, **kwargs):
+	def __init__(self, logdir, counter, **kwargs):
 		"""
 		"""
 
@@ -13,9 +13,12 @@ class TensorboardMonitor:
 		self.num_actions = kwargs.get('num_actions', 4)
 		self.report_frequency = kwargs.get('report_frequency', 10000)
 
-		self.sess = sess
 		self.logdir = logdir
 		self.counter = counter
+
+		# Get the default session to perform operations in; raise an error if no session is available 
+		self.sess = tf.get_default_session()
+		assert self.sess != None, "No Tensorflow Session found, a Session is needed for the DQN"
 
 		with tf.variable_scope(self.name):
 			self.writer = tf.summary.FileWriter(logdir, self.sess.graph)

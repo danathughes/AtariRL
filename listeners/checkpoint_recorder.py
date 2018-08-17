@@ -10,7 +10,7 @@ class CheckpointRecorder(object):
 	"""
 	"""
 
-	def __init__(self, dqn, replay_memory, counter, directory, sess, **kwargs):
+	def __init__(self, dqn, replay_memory, counter, directory, **kwargs):
 		"""
 		"""
 
@@ -19,8 +19,7 @@ class CheckpointRecorder(object):
 		self.checkpoint_dir = directory
 
 		self.counter = counter
-
-		self.sess = sess
+		
 
 		# Check to see if the directory exists.  If not, create a new one
 		if not os.path.exists(self.checkpoint_dir + '/replay_memory'):
@@ -30,7 +29,7 @@ class CheckpointRecorder(object):
 		if not os.path.exists(self.checkpoint_dir + '/tensorflow'):
 			os.makedirs(self.checkpoint_dir + '/tensorflow')
 
-		self.tensorflow_checkpoint = TensorflowCheckpoint(self.checkpoint_dir + '/tensorflow', self.counter, self.sess)
+		self.tensorflow_checkpoint = TensorflowCheckpoint(self.checkpoint_dir + '/tensorflow', self.counter)
 
 
 	def save_memory(self):

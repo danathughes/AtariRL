@@ -10,13 +10,16 @@ class Update(object):
   Perform an update step between a DQN and a target DQN
   """
 
-  def __init__(self, dqn, target_dqn, sess):
+  def __init__(self, dqn, target_dqn):
     """
     """
 
     self.dqn = dqn
     self.target_dqn = target_dqn
-    self.sess = sess
+
+    # Get the default session to perform operations in; raise an error if no session is available 
+    self.sess = tf.get_default_session()
+    assert self.sess != None, "No Tensorflow Session found, a Session is needed for the Update operation"
 
     # Create an operator to update the target weights from the current DQN
     self.update_operations = []
@@ -40,14 +43,17 @@ class TensorflowCheckpoint:
   Class to save and restore a tensorflow graph
   """
 
-  def __init__(self, save_path, counter, sess):
+  def __init__(self, save_path, counter):
     """
     """
 
     self.path = save_path
     self.saver = tf.train.Saver()
     self.counter = counter
-    self.sess = sess
+
+    # Get the default session to perform operations in; raise an error if no session is available 
+    self.sess = tf.get_default_session()
+    assert self.sess != None, "No Tensorflow Session found, a Session is needed for the TensorflowCheckpoint"
 
 
   def save(self):

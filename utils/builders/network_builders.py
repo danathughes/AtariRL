@@ -8,7 +8,7 @@ def create_dqn_builder(network_layers):
 	"""
 	"""
 
-	def builder(input_shape, num_actions, sess, network_name='dqn', trainable=True):
+	def builder(input_shape, num_actions, network_name='dqn', trainable=True):
 		"""
 		"""
 
@@ -16,7 +16,7 @@ def create_dqn_builder(network_layers):
 		layers = network_layers + [FullConnection(num_actions, name='Q', activation_function=None)]
 
 		# Create a network
-		return DQN.DeepQNetwork(input_shape, layers, num_actions, sess, network_name=network_name, trainable=trainable)
+		return DQN.DeepQNetwork(input_shape, layers, num_actions, network_name=network_name, trainable=trainable)
 	
 	return builder
 
@@ -26,7 +26,7 @@ def create_dueling_dqn_builder(network_layers):
 	"""
 	"""
 
-	def builder(input_shape, num_actions, sess, network_name='dqn', trainable=True):
+	def builder(input_shape, num_actions, network_name='dqn', trainable=True):
 		"""
 		"""
 
@@ -37,7 +37,7 @@ def create_dueling_dqn_builder(network_layers):
 		layers = (network_layers[0], value_layers, advantage_layers)
 
 		# Create a network
-		return DDQN.DuelingDeepQNetwork(input_shape, layers, num_actions, sess, network_name=network_name, trainable=trainable)
+		return DDQN.DuelingDeepQNetwork(input_shape, layers, num_actions, network_name=network_name, trainable=trainable)
 
 	return builder
 
@@ -46,7 +46,7 @@ def create_bootstrapped_dqn_builder(shared_layers, head_layers, num_heads):
 	"""
 	"""
 
-	def builder(input_shape, num_actions, sess, network_name='dqn', trainable=True):
+	def builder(input_shape, num_actions, network_name='dqn', trainable=True):
 		"""
 		"""
 
@@ -54,6 +54,6 @@ def create_bootstrapped_dqn_builder(shared_layers, head_layers, num_heads):
 		head = head_layers + [FullConnection(num_actions, name='Q', activation_function=None)]
 
 		# Create a network
-		return BDQN.BootstrappedDeepQNetwork(input_shape, shared_layers, head, num_actions, num_heads, sess, network_name=network_name, trainable=trainable)
+		return BDQN.BootstrappedDeepQNetwork(input_shape, shared_layers, head, num_actions, num_heads, network_name=network_name, trainable=trainable)
 
 	return builder

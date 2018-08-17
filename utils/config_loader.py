@@ -69,12 +69,11 @@ def load_float(config, section, name, default):
 	return value
 
 
-def load(config_filename, sess):
+def load(config_filename):
 	"""
 	Loads a configuration of compoents from a file
 
 	config_filename - Name of the file to load components from
-	sess				 - The tensorflow session to run everything in
 	"""
 
 	# Does the filename exist?
@@ -92,17 +91,17 @@ def load(config_filename, sess):
 	counter_start = load_int(config, 'Counter', 'start', 0)
 	counter = Counter(counter_start)
 
-	dqn_agent, agent, eval_agent = load_agent(config, environment, network_builder, memory, counter, sess, num_heads)
+	dqn_agent, agent, eval_agent = load_agent(config, environment, network_builder, memory, counter, num_heads)
 
 	# Create a checkpoint object to save the agent and memory
-	checkpoint = load_checkpoint(config, dqn_agent.dqn, memory, counter, sess)
-	tensorboard = load_tensorboard(config, dqn_agent, sess, counter)
+	checkpoint = load_checkpoint(config, dqn_agent.dqn, memory, counter)
+	tensorboard = load_tensorboard(config, dqn_agent, counter)
 
 	return environment, agent, eval_agent, counter, checkpoint, tensorboard
 
 
 
-def load_agent(config, environment, network_builder, memory, counter, sess, num_heads):
+def load_agent(config, environment, network_builder, memory, counter, num_heads):
 	"""
 	Load an agent from the ConfigParser
 	"""
@@ -124,13 +123,13 @@ def load_agent(config, environment, network_builder, memory, counter, sess, num_
 	# Build the agent!
 	if agent_type == "DQN":
 		dqn_agent = DQN_Agent(frame_shape, num_actions, history_size, network_builder, memory,
-									 minibatch_size=minibatch_size, discount_factor=discount_factor, tf_session=sess)
+									 minibatch_size=minibatch_size, discount_factor=discount_factor)
 	elif agent_type == "DoubleDQN":
 		dqn_agent = DoubleDQN_Agent(frame_shape, num_actions, history_size, network_builder, memory,
-									 minibatch_size=minibatch_size, discount_factor=discount_factor, tf_session=sess)
+									 minibatch_size=minibatch_size, discount_factor=discount_factor)
 	elif agent_type == "BootstrappedDQN":
 		dqn_agent = Bootstrapped_DQN_Agent(frame_shape, num_actions, history_size, network_builder, memory, num_heads,
-									 minibatch_size=minibatch_size, discount_factor=discount_factor, tf_session=sess)		
+									 minibatch_size=minibatch_size, discount_factor=discount_factor)
 
 	# Add callbacks to the counter for the dqn agent
 	counter.add_hook(dqn_agent.update_target_network, target_update_frequency, 0)
@@ -268,7 +267,7 @@ def load_network(config):
 	return builder, num_heads
 
 
-def load_checkpoint(config, dqn, memory, counter, sess):
+def load_checkpoint(config, dqn, memory, counter):
 	"""
 	Load checkpoint object
 	"""
@@ -281,7 +280,7 @@ def load_checkpoint(config, dqn, memory, counter, sess):
 	tensorflow_save_rate = load_int(config, 'Checkpoint', 'tensorflow_save_rate', 100000)
 	memory_save_rate = load_int(config, 'Checkpoint', 'memory_save_rate', 1000000)
 
-	checkpoint = CheckpointRecorder(dqn, memory, counter, checkpoint_path, sess)
+	checkpoint = CheckpointRecorder(dqn, memory, counter, checkpoint_path)
 
 	# Add the hooks to the counter
 	counter.add_hook(checkpoint.save_dqn, dqn_save_rate)
@@ -291,7 +290,7 @@ def load_checkpoint(config, dqn, memory, counter, sess):
 	return checkpoint
 
 
-def load_tensorboard(config, dqn_agent, sess, counter):
+def load_tensorboard(config, dqn_agent, counter):
 	"""
 	Create a Tensorboard monitoring object
 	"""
@@ -299,7 +298,7 @@ def load_tensorboard(config, dqn_agent, sess, counter):
 	# What's the path for logging?
 	log_path = load_str(config, 'Tensorboard', 'path', './log')
 
-	tensorboard = TensorboardMonitor(log_path, sess, counter)
+	tensorboard = TensorboardMonitor(log_path, counter)
 	tensorboard.add_scalar_summary('score', 'per_game_summary')
 	tensorboard.add_scalar_summary('training_loss', 'training_summary')
 	for i in range(dqn_agent.num_actions):
