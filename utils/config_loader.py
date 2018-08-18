@@ -8,8 +8,8 @@ from environments.AtariEnvironment import AtariEnvironment
 from environments.OpenAIGymEnvironment import OpenAIGymEnvironment
 
 # Networks
-from models.networks import NIPS, NATURE, DUELING
-from utils.builders.network_builders import *
+from models.networks import *
+#from utils.builders.network_builders import *
 
 # Memory
 from memory.memory import ReplayMemory
@@ -241,38 +241,24 @@ def load_network(config, environment):
 	# Default to 10
 	num_heads = load_int(config, 'Network', 'num_heads', 10)
 
-	# Use the appropriate architecture
-	if architecture == "NIPS":
-		layers = NIPS
-	elif architecture == "NATURE":
-		layers = NATURE
-	elif architecture == "DUELING":
-		layers = DUELING
-	else:
-		print "Unknown network architecture: %s" % architecture
-		return None
-
-	# Grab the appropriate network builder
-	if network_type == "DQN":
-		builder = create_dqn_builder(layers)
-	elif network_type == "DuelingDQN":
-		builder = create_dueling_dqn_builder(layers)
-	elif network_type == "BootstrappedDQN":
-		# Assume there is only one final layer to use as the head streams
-		shared_layers = layers[:-1]
-		head_layers = layers[-1:]
-		builder = create_bootstrapped_dqn_builder(shared_layers, head_layers, num_heads)
-	else:
-		print "Unknown network type: %s" % network_type
-		return None
-
 	# Make a DQN and Target DQN
 	history_size = load_int(config, 'Agent', 'history_size', 4)
-
 	input_shape = environment.screen_size + (history_size, )
+	num_actions = environment.num_actions
 
-	dqn = builder(input_shape, environment.num_actions, network_name='dqn')
-	target_dqn = builder(input_shape, environment.num_actions, network_name='target_dqn', trainable=False)
+	# Use the appropriate architecture
+	if architecture == "NIPS":
+		dqn = nips_dqn(input_shape, num_actions, network_name='dqn')
+		target_dqn = nips_dqn(input_shape, num_actions, network_name='target_dqn', trainable=False)
+	elif architecture == "NATURE":
+		dqn = nature_dqn(input_shape, num_actions, network_name='dqn')
+		target_dqn = nature_dqn(input_shape, num_actions, network_name='target_dqn', trainable=False)
+	elif architecture == "DUELING":
+		dqn = deuling_dqn(input_shape, num_actions, network_name='dqn')
+		target_dqn = deuling_dqn(input_shape, num_actions, network_name='target_dqn', trainable=False)
+	else:
+		print "Unknown network architecture: %s" % architecture
+		return None, None
 
 	return dqn, target_dqn
 
