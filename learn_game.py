@@ -21,7 +21,7 @@ sess.run(tf.global_variables_initializer())
 
 # Can restore things from the checkpoint, if desired
 if counter.count > 0:
-	checkpoint.restore_memory(counter.count)
+	checkpoint.restore_memory(3000000)
 	checkpoint.restore_tensorflow(counter.count)
 
 def run():
@@ -41,5 +41,10 @@ def run():
 	print "Done Training.  Playing..."
 
 if __name__ == '__main__':
-	run()
-
+	try:
+		run()
+	except KeyboardInterrupt:
+		# User pressed Control-C, save the current model and memory
+		checkpoint.save_memory()
+		checkpoint.save_tensorflow()
+		checkpoint.save_dqn()

@@ -37,6 +37,108 @@ def bias_variable(shape, name=None, trainable=True):
    return bias
 
 
+
+class PrimaryCaps_EM:
+   """
+   A Primary Capsule Layer.  See jhui.github.io blog for details.  uses EM routing.
+   """
+
+   def __init__(self, kernel_shape, pose_shape, num_output_capsules, **kwargs):
+      """
+      Create a holder for the primary capsule layer
+
+      Arguments:
+         kernel_shape - shape of the kernels
+         pose_shape - the shape of the pose of each capsule
+         num_output_capsules - how many capsules to generate
+
+      Optional Arguments:
+         name  - A name for the layer
+         strides - Stride of the kernel
+         padding - "SAME" or "VALID"
+         activation_function - ReLU
+      """
+
+      # Simply hold on to the parameters for now
+      self.kernel_shape = kernel_shape
+      self.num_capsules = num_output_capsules
+      self.pose_shape = pose_shape
+
+      self.name = kwargs.get("name", None)
+      self.stride = kwargs.get("stride", 1)
+      self.padding = kwargs.get("padding", "SAME")
+      self.activation_function = kwargs.get("activation_function", tf.nn.relu)
+
+      # Placeholder for the weights for this layer
+      self.pose_weights = None
+      self.activation_weights = None
+      self.pose_bias = None
+      self.activation_bias = None
+
+
+   def build(self, input_layer, trainable=True):
+      """
+      Construct the layer in tensorflow
+      """
+
+      with tf.variable_scope(self.name):
+         # Get the number of input channels
+         input_shape = input_layer.get_shape()
+         num_input_channels = input_shape[-1].value
+
+         # Create the weights for the pose and activation
+         pose_weight_shape = [self.kernel_shape[0], self.kernel_shape[1], num_input_channels, self.pose_shape[0]*self.pose_shape[1]*self.num_capsules]
+         activation_weight_shape = [self.kernel_shape[0], self.kernel_shape[1], num_input_channels, self.num_capsules]
+
+         self.pose_weights = weight_variable(pose_weight_shape, 'w_pose_'+self.name, trainable)
+         self.activation_weights = weight_variable(activation_weight_shape, 'w_activation_'+self.name, trainable)
+
+         # Calculate the poses and activations - reshape pose to (-1, W, H, POSE_W, POSE_H, NUM_CAPSULES)
+         self.poses = tf.nn.conv2d(input_layer, pose_weight_shape, strides=[1, self.stride, self.stride, 1], padding=self.padding)
+         self.poses = tf.reshape(poses, shape=[-1, input_shape[2], input_shape[3], self.pose_shape[0], self.pose_shape[1], self.num_capsules])
+
+         self.activations = tf.nn.conv2d(input_layer, activation_weight_shape, strides=[1, self.stride, self.stride, 1], padding=self.padding)
+         self.activations = tf.sigmoid(self.activations)
+
+      return self.poses, self.activations, self.pose_weights, self.activation_weights
+
+
+class ConvCaps_EM:
+   """
+   A Convolutional Capsule layer, using EM routing
+   """
+
+   def __init__(self, kernel_shape, num_output_capsules, batch_size, **kwargs):
+      """
+      """
+
+      # Simply hold the parameters for now
+      self.kernel_shape = kernel_shape
+      self.num_capsules = num_output_capsules
+      self.batch_size = batch_size
+
+      self.name = kwargs.get("name", None)
+      self.stride = kwargs.get("stride", 1)
+      self.padding = kwargs.get("padding", "SAME")
+      self.num_em_steps = kwargs.get("num_em_steps", 3)
+
+
+   def build(self, pose_layer, activation_layer, trainable=True):
+      """
+      Construct the convolution capsule layer
+
+      pose_layer: a primary or convolution capsule layer with shape (N, W, H, C, POSE_W, POSE_H)
+      activation_layer: (N, W, H, C)
+      """
+
+      input_shape = pose_layer.get_shape()
+
+      # What shape is a pose?
+      pose_shape = [input_shape[-2].value, input_shape[-1].value]
+      num_input_capsules = input_shape[-3].value
+
+      
+
 class Convolutional:
    """
    A Convolutional Layer
